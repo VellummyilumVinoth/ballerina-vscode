@@ -31,6 +31,7 @@ import { FileIntegrationPanel } from "./FileIntegrationPanel";
 import { IntegrationAPIPanel } from "./IntegrationApiPanel";
 import { OtherArtifactsPanel } from "./OtherArtifactsPanel";
 import { AIAgentPanel } from "./AIAgentPanel";
+import { ChatAppsPanel } from "./ChatAppsPanel";
 import { useVisualizerContext } from "../../../Context";
 import { useRpcContext } from "@wso2/ballerina-rpc-client";
 
@@ -109,6 +110,7 @@ export function ComponentListView(props: ComponentListViewProps) {
                                 <AutomationPanel scope={scope} searchQuery={searchQuery} />
                                 <WorkflowPanel />
                                 <AIAgentPanel scope={scope} triggers={triggers} searchQuery={searchQuery} />
+                                <ChatAppsPanel scope={scope} />
                                 <IntegrationAPIPanel scope={scope} searchQuery={searchQuery} />
                                 <EventIntegrationPanel triggers={triggers} scope={scope} searchQuery={searchQuery} />
                                 <FileIntegrationPanel triggers={triggers} scope={scope} searchQuery={searchQuery} />

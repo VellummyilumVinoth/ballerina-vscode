@@ -26,11 +26,14 @@ import io.ballerina.projects.Document;
 import io.ballerina.projects.Project;
 import io.ballerina.servicemodelgenerator.extension.builder.service.AiChatServiceBuilder;
 import io.ballerina.servicemodelgenerator.extension.builder.service.DefaultServiceBuilder;
+import io.ballerina.servicemodelgenerator.extension.builder.service.GoogleChatServiceBuilder;
 import io.ballerina.servicemodelgenerator.extension.builder.service.GraphqlServiceBuilder;
 import io.ballerina.servicemodelgenerator.extension.builder.service.HttpServiceBuilder;
 import io.ballerina.servicemodelgenerator.extension.builder.service.SchemaDrivenServiceBuilder;
 import io.ballerina.servicemodelgenerator.extension.builder.service.SolaceServiceBuilder;
 import io.ballerina.servicemodelgenerator.extension.builder.service.TCPServiceBuilder;
+import io.ballerina.servicemodelgenerator.extension.builder.service.TelegramServiceBuilder;
+import io.ballerina.servicemodelgenerator.extension.builder.service.WhatsAppBusinessServiceBuilder;
 import io.ballerina.servicemodelgenerator.extension.connector.ConnectorModelReader;
 import io.ballerina.servicemodelgenerator.extension.model.Service;
 import io.ballerina.servicemodelgenerator.extension.model.ServiceInitModel;
@@ -54,10 +57,13 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import static io.ballerina.servicemodelgenerator.extension.util.Constants.AI;
+import static io.ballerina.servicemodelgenerator.extension.util.Constants.GOOGLE_CHAT;
 import static io.ballerina.servicemodelgenerator.extension.util.Constants.GRAPHQL;
 import static io.ballerina.servicemodelgenerator.extension.util.Constants.HTTP;
 import static io.ballerina.servicemodelgenerator.extension.util.Constants.SOLACE;
 import static io.ballerina.servicemodelgenerator.extension.util.Constants.TCP;
+import static io.ballerina.servicemodelgenerator.extension.util.Constants.TELEGRAM;
+import static io.ballerina.servicemodelgenerator.extension.util.Constants.WHATSAPP_BUSINESS;
 
 /**
  * ServiceBuilderRouter is responsible for routing service building requests to the appropriate service builder
@@ -79,6 +85,9 @@ public class ServiceBuilderRouter {
         put(TCP, TCPServiceBuilder::new);
         put(GRAPHQL, GraphqlServiceBuilder::new);
         put(SOLACE, SolaceServiceBuilder::new);
+        put(TELEGRAM, TelegramServiceBuilder::new);
+        put(WHATSAPP_BUSINESS, WhatsAppBusinessServiceBuilder::new);
+        put(GOOGLE_CHAT, GoogleChatServiceBuilder::new);
     }};
 
     public static ServiceNodeBuilder getServiceBuilder(String protocol) {

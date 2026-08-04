@@ -33,6 +33,8 @@ interface EventIntegrationPanelProps {
     searchQuery?: string;
 };
 
+const CHAT_APPS_MODULES = ["telegram", "whatsapp.business", "googleapis.chat"];
+
 export function EventIntegrationPanel(props: EventIntegrationPanelProps) {
     const { rpcClient } = useRpcContext();
     const isDisabled = props.scope && (props.scope !== SCOPE.EVENT_INTEGRATION && props.scope !== SCOPE.ANY);
@@ -54,7 +56,7 @@ export function EventIntegrationPanel(props: EventIntegrationPanelProps) {
     };
 
     const visibleTriggers = props.triggers.local
-        .filter((t) => t.type === "event")
+        .filter((t) => t.type === "event" && !CHAT_APPS_MODULES.includes(t.moduleName))
         .filter((t) => matchesArtifactQuery(searchQuery, t.name, t.moduleName));
 
     // While the user is searching, a section with no matches disappears entirely.
