@@ -60,3 +60,16 @@ compileJava {
         classpath = files()
     }
 }
+
+task runServiceIndexGenerator(type: JavaExec) {
+    group = 'application'
+    description = 'Run ServiceIndexGenerator to regenerate service-index.sqlite'
+    dependsOn ':langserver-core:unpackJballerinaTools'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.ballerina.indexgenerator.ServiceIndexGenerator'
+    workingDir = rootProject.projectDir
+    // PackageUtil.getSampleProject() needs a real Ballerina distribution to resolve/compile
+    // packages against; reuse the one langserver-core already unpacks for its own tests.
+    systemProperty "ballerina.home",
+            file("${rootProject.project(':langserver-core').buildDir}/jballerina-tools-${ballerinaLangVersion}")
+}
