@@ -96,6 +96,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -282,7 +283,7 @@ public class CommonUtils {
             if (moduleInfo == null || !modPart.equals(moduleInfo.packageName())) {
                 // The allocator may hand back something other than the natural segment, which is what keeps two
                 // modules ending in the same segment from rendering under one qualifier.
-                newText.append(allocator == null ? modPart
+                newText.append(allocator == null ? CommonUtil.escapeReservedKeyword(modPart)
                         : allocator.qualifierFor(orgPart, fullModulePart, moduleInfo));
                 newText.append(":");
             }
@@ -975,13 +976,26 @@ public class CommonUtils {
             importStatement.append(orgName).append("/");
         }
         if (moduleName != null && moduleName.startsWith(packageName + ".")) {
-            importStatement.append(moduleName);
+            importStatement.append(escapeModuleName(moduleName));
         } else if (moduleName != null && !packageName.equals(moduleName)) {
-            importStatement.append(packageName).append(".").append(moduleName);
+            importStatement.append(escapeModuleName(packageName)).append(".").append(escapeModuleName(moduleName));
         } else {
-            importStatement.append(packageName);
+            importStatement.append(escapeModuleName(packageName));
         }
         return importStatement.toString();
+    }
+
+    /**
+     * Escapes each dot-separated segment of a module name against Ballerina reserved keywords.
+     * e.g. "hubspot.crm.import" -> "hubspot.crm.'import"
+     *
+     * @param moduleName the dot-separated module name
+     * @return the module name with each reserved-keyword segment escaped
+     */
+    private static String escapeModuleName(String moduleName) {
+        return Arrays.stream(moduleName.split("\\."))
+                .map(CommonUtil::escapeReservedKeyword)
+                .collect(Collectors.joining("."));
     }
 
     /**
@@ -1112,7 +1126,8 @@ public class CommonUtils {
     }
 
     public static String getClassType(String packageName, String clientName) {
-        String importPrefix = packageName.substring(packageName.lastIndexOf('.') + 1);
+        String importPrefix =
+                CommonUtil.escapeReservedKeyword(packageName.substring(packageName.lastIndexOf('.') + 1));
         return String.format("%s:%s", importPrefix, clientName);
     }
 
