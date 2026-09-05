@@ -281,10 +281,16 @@ public class CommonUtils {
             String typeName = matcher.group(4);
 
             if (moduleInfo == null || !modPart.equals(moduleInfo.packageName())) {
-                // The allocator may hand back something other than the natural segment, which is what keeps two
-                // modules ending in the same segment from rendering under one qualifier.
-                newText.append(allocator == null ? CommonUtil.escapeReservedKeyword(modPart)
-                        : allocator.qualifierFor(orgPart, fullModulePart, moduleInfo));
+                if (allocator != null) {
+                    // The allocator may hand back something other than the natural segment, which is what keeps
+                    // two modules ending in the same segment from rendering under one qualifier.
+                    newText.append(allocator.qualifierFor(orgPart, fullModulePart, moduleInfo));
+                } else {
+                    // Predefined lang library prefixes (e.g. int, string, error, map) are keywords but are legal
+                    // unescaped as module qualifiers (int:Signed32, error:StackFrame), so they must not be escaped.
+                    newText.append(isPredefinedLangLib(orgPart, fullModulePart)
+                            ? modPart : CommonUtil.escapeReservedKeyword(modPart));
+                }
                 newText.append(":");
             }
             newText.append(typeName);
@@ -993,7 +999,7 @@ public class CommonUtils {
      * @return the module name with each reserved-keyword segment escaped
      */
     private static String escapeModuleName(String moduleName) {
-        return Arrays.stream(moduleName.split("\\."))
+        return Arrays.stream(moduleName.split("\\.", -1))
                 .map(CommonUtil::escapeReservedKeyword)
                 .collect(Collectors.joining("."));
     }
