@@ -589,7 +589,7 @@ function createFunctionConnections(
             if (targetNode) {
                 const port = portGetter(func, group);
                 if (port) {
-                    const link = createPortNodeLink(port, targetNode);
+                    const link = createPortNodeLink(node, port, targetNode);
                     if (link) {
                         links.push(link);
                     }
@@ -622,7 +622,7 @@ function createFunctionConnections(
             if (workflowNode) {
                 const port = portGetter(func, group);
                 if (port) {
-                    const link = createPortNodeLink(port, workflowNode, { visible: true, broken: true });
+                    const link = createPortNodeLink(node, port, workflowNode, { visible: true, broken: true });
                     if (link) {
                         links.push(link);
                     }

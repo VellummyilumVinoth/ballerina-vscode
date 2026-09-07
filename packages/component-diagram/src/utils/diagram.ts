@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import createEngine, { DiagramEngine, DiagramModel } from "@projectstorm/react-diagrams";
+import createEngine, { DiagramEngine, DiagramModel, PortModel } from "@projectstorm/react-diagrams";
 import { NodePortFactory, NodePortModel } from "../components/NodePort";
 import { NodeLinkFactory, NodeLinkModel, NodeLinkModelOptions } from "../components/NodeLink";
 import { OverlayLayerFactory } from "../components/OverlayLayer";
@@ -32,6 +32,8 @@ import {
     ENTRY_NODE_HEIGHT,
     NODE_GAP_Y,
     LISTENER_NODE_HEIGHT,
+    CON_NODE_WIDTH,
+    CON_NODE_HEIGHT,
 } from "../resources/constants";
 import { ListenerNodeModel } from "../components/nodes/ListenerNode";
 import { ConnectionNodeModel } from "../components/nodes/ConnectionNode";
@@ -167,7 +169,228 @@ export function autoDistribute(engine: DiagramEngine) {
         });
     }
 
+    avoidLinkObstructions(engine);
+
     engine.repaintCanvas();
+}
+
+/** Minimum clearance kept between a rerouted link and the edge of the node it detours around. */
+export const LINK_DETOUR_MARGIN = 16;
+
+/**
+ * Shared row metrics for the plain entry/workflow body layout: a fixed-height header block,
+ * then a uniform-height row per function/event, optionally followed by a "view all" row (see
+ * `Node`/`Box`/`FunctionBoxWrapper` in `nodes/EntryNode/components/styles.ts` and the row
+ * components in `GeneralWidget.tsx`). `calculateEntryNodeHeight`/`calculateWorkflowNodeHeight`
+ * (which size a node) and `getPortAnchorY` (which locates a specific row's port for link
+ * routing) both derive from these same numbers so the two can't drift out of sync.
+ */
+const ROW_PADDING = 8;
+const ENTRY_HEADER_HEIGHT = 64 + ROW_PADDING;
+const ENTRY_ROW_HEIGHT = 40 + ROW_PADDING;
+const ENTRY_VIEW_ALL_BUTTON_HEIGHT = 40;
+
+interface BoundingBox {
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+}
+
+/**
+ * Returns a node's on-canvas box. Entry/workflow nodes always carry an explicit `.height`
+ * (computed from their content - see calculateEntryNodeHeight/calculateWorkflowNodeHeight), but
+ * connection and listener nodes never set the model's width/height fields (their box comes from
+ * fixed CSS sizing instead), so those fall back to the matching size constants.
+ */
+function getNodeBoundingBox(node: NodeModel): BoundingBox {
+    const type = node.getType();
+    const defaultWidth = type === NodeTypes.CONNECTION_NODE
+        ? CON_NODE_WIDTH
+        : type === NodeTypes.LISTENER_NODE
+            ? LISTENER_NODE_WIDTH
+            : ENTRY_NODE_WIDTH;
+    const defaultHeight = type === NodeTypes.CONNECTION_NODE
+        ? CON_NODE_HEIGHT
+        : type === NodeTypes.LISTENER_NODE
+            ? LISTENER_NODE_HEIGHT
+            : ENTRY_NODE_HEIGHT;
+    const width = node.width || defaultWidth;
+    const height = node.height || defaultHeight;
+    return {
+        left: node.getX(),
+        right: node.getX() + width,
+        top: node.getY(),
+        bottom: node.getY() + height,
+    };
+}
+
+/**
+ * Returns the Y coordinate a link actually leaves/enters a node at, based on the specific port
+ * it's attached to - not just the node's box center.
+ *
+ * The generic in/out ports (and, for `ai:Service` nodes, their single function port - see
+ * `AIServiceWidget.tsx`) sit at the node's true vertical center, because `Node` is a flex *row*
+ * with those ports as its first/last children (see `styles.ts`). But `GeneralServiceWidget`
+ * stacks function rows and workflow event rows in a column *below* the header (`FunctionBox` /
+ * `WorkflowEventBox`, each wrapped in a `FunctionBoxWrapper`), so a link attached to one of
+ * those specific ports actually leaves from that row's own Y - which can be well below the
+ * node's center for a short node with few rows. Treating it as centered is exactly what let a
+ * function-row link cut through an unrelated node sitting below where the node's center
+ * happened to be.
+ *
+ * `GraphQLServiceWidget` groups functions under collapsible per-group headers whose layout
+ * depends on live UI state (which groups are open) that this layout pass has no access to, so
+ * GraphQL function/group ports still fall back to the node-center approximation - a known,
+ * narrower gap than the one this function fixes.
+ */
+export function getPortAnchorY(node: NodeModel, port: PortModel | null | undefined): number {
+    const box = getNodeBoundingBox(node);
+    const center = (box.top + box.bottom) / 2;
+    if (!port || !(node instanceof EntryNodeModel)) {
+        return center;
+    }
+
+    if (port === node.getInPort() || port === node.getOutPort()) {
+        return center;
+    }
+
+    if (node.type === "workflow") {
+        const events = (node.node as CDWorkflow).events ?? [];
+        const eventIndex = events.findIndex((event) => node.getEventPort(event) === port);
+        if (eventIndex === -1) {
+            return center; // workflow nodes have no other row-level ports
+        }
+        return box.top + ENTRY_HEADER_HEIGHT + eventIndex * ENTRY_ROW_HEIGHT + ENTRY_ROW_HEIGHT / 2;
+    }
+
+    const service = node.node as CDService;
+    if (service?.type === "ai:Service" || service?.type === "graphql:Service") {
+        return center;
+    }
+
+    if (port === node.getViewAllResourcesPort()) {
+        // Only ever linked while collapsed, in which case exactly PREVIEW_COUNT rows are
+        // visible above it (see partitionRegularServiceFunctions in Diagram.tsx).
+        return box.top + ENTRY_HEADER_HEIGHT + PREVIEW_COUNT * ENTRY_ROW_HEIGHT + ENTRY_VIEW_ALL_BUTTON_HEIGHT / 2;
+    }
+
+    // A specific function's own port. Ports are added in the same order functions are shown in
+    // (see EntryNodeModel's constructor and partitionRegularServiceFunctions in Diagram.tsx),
+    // and a function is only ever linked via its own port while visible, so its position among
+    // the node's out-ports - after the leading generic "out" port - is exactly its row index.
+    const rowIndex = node.getOutPorts().indexOf(port as NodePortModel) - 1;
+    if (rowIndex >= 0) {
+        return box.top + ENTRY_HEADER_HEIGHT + rowIndex * ENTRY_ROW_HEIGHT + ENTRY_ROW_HEIGHT / 2;
+    }
+
+    return center;
+}
+
+/**
+ * autoDistribute() lays nodes out in fixed left-to-right columns, but every link is still a
+ * plain straight line between its source and target port (NodeLinkModel always uses curvyness:
+ * 0, and nothing else ever adds waypoints). Whenever a link's endpoints sit in non-adjacent
+ * columns - e.g. an automation or a service function linking straight to a connection while the
+ * workflow column exists in between - that straight line can cut right through an unrelated
+ * node occupying the column it skips over.
+ *
+ * This pass is a general geometric check (it doesn't know or care that the "workflow" column is
+ * the one usually in the way, so it keeps working if more columns are ever inserted between
+ * existing ones): for every link, it looks for nodes whose column lies strictly between the
+ * link's two endpoints, and whose box the straight line would cross. When it finds one, it adds
+ * two waypoints that route the link through the nearest free vertical gap in that column instead
+ * - above or below whichever node(s) are in the way - rather than through them.
+ */
+export function avoidLinkObstructions(engine: DiagramEngine) {
+    const model = engine.getModel();
+    const allNodes = model.getNodes() as NodeModel[];
+    const links = model.getLinks().filter((linkModel): linkModel is NodeLinkModel => linkModel instanceof NodeLinkModel);
+
+    links.forEach((link) => {
+        // Every link starts life with exactly 2 points (see NodeLinkModel/DefaultLinkModel), but
+        // guard against being run more than once over the same link.
+        link.removeMiddlePoints();
+
+        const sourceNode = link.sourceNode;
+        const targetNode = link.targetNode;
+        if (!sourceNode || !targetNode || sourceNode === targetNode) {
+            return;
+        }
+
+        const sourceBox = getNodeBoundingBox(sourceNode);
+        const targetBox = getNodeBoundingBox(targetNode);
+        const sourceAnchorY = getPortAnchorY(sourceNode, link.getSourcePort());
+        const targetAnchorY = getPortAnchorY(targetNode, link.getTargetPort());
+
+        // Columns are always laid out left to right; if the two ends are in the same or
+        // adjacent columns there's no room for another node to sit in between them.
+        const sourceIsLeft = sourceBox.left <= targetBox.left;
+        const leftBox = sourceIsLeft ? sourceBox : targetBox;
+        const rightBox = sourceIsLeft ? targetBox : sourceBox;
+        if (rightBox.left <= leftBox.right) {
+            return;
+        }
+
+        const anchorLeft = { x: leftBox.right, y: sourceIsLeft ? sourceAnchorY : targetAnchorY };
+        const anchorRight = { x: rightBox.left, y: sourceIsLeft ? targetAnchorY : sourceAnchorY };
+        const yAtX = (x: number) => {
+            const t = (x - anchorLeft.x) / (anchorRight.x - anchorLeft.x);
+            return anchorLeft.y + t * (anchorRight.y - anchorLeft.y);
+        };
+
+        // Nodes whose entire column lies strictly between the two endpoints (e.g. the workflow
+        // column, when the link skips straight from an entry node to a connection).
+        const betweenBoxes = allNodes
+            .filter((node) => node !== sourceNode && node !== targetNode)
+            .map(getNodeBoundingBox)
+            .filter((box) => box.left >= anchorLeft.x && box.right <= anchorRight.x);
+        if (betweenBoxes.length === 0) {
+            return;
+        }
+
+        const crossesBox = (box: BoundingBox) => {
+            const lo = Math.min(yAtX(box.left), yAtX(box.right));
+            const hi = Math.max(yAtX(box.left), yAtX(box.right));
+            return lo <= box.bottom && hi >= box.top;
+        };
+        if (!betweenBoxes.some(crossesBox)) {
+            return;
+        }
+
+        // Route around every node physically in that column - not just the one(s) the straight
+        // line happens to cross - so the detour lane is guaranteed clear of all of its siblings.
+        const columnLeft = Math.min(...betweenBoxes.map((box) => box.left));
+        const columnRight = Math.max(...betweenBoxes.map((box) => box.right));
+        const naiveY = yAtX((columnLeft + columnRight) / 2);
+
+        const sortedColumn = [...betweenBoxes].sort((a, b) => a.top - b.top);
+        const gaps: Array<{ top: number; bottom: number }> = [];
+        let cursor = -Infinity;
+        sortedColumn.forEach((box) => {
+            gaps.push({ top: cursor, bottom: box.top - LINK_DETOUR_MARGIN });
+            cursor = box.bottom + LINK_DETOUR_MARGIN;
+        });
+        gaps.push({ top: cursor, bottom: Infinity });
+
+        // Pick whichever free gap requires the smallest detour from the straight-line Y. A gap
+        // whose bottom ends up above its top has no real room in it (two obstructing nodes sit
+        // closer together than 2x the margin) and must be skipped, not clamped into.
+        let laneY = naiveY;
+        let bestDistance = Infinity;
+        gaps.filter((gap) => gap.bottom >= gap.top).forEach((gap) => {
+            const candidateY = Math.min(Math.max(naiveY, gap.top), gap.bottom);
+            const distance = Math.abs(candidateY - naiveY);
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                laneY = candidateY;
+            }
+        });
+
+        const detourX = NODE_GAP_X / 4;
+        link.point(columnLeft - detourX, laneY, 1);
+        link.point(columnRight + detourX, laneY, 2);
+    });
 }
 
 export function registerListeners(engine: DiagramEngine) {
@@ -235,15 +458,20 @@ export function createNodesLink(sourceNode: NodeModel, targetNode: NodeModel, op
     return link;
 }
 
-// create link between port and node
-export function createPortNodeLink(port: NodePortModel, node: NodeModel, options?: NodeLinkModelOptions) {
-    const targetPort = node.getInPort();
+// create link between a specific port on `sourceNode` (e.g. one function's out-port) and `targetNode`'s in-port
+export function createPortNodeLink(
+    sourceNode: NodeModel,
+    port: NodePortModel,
+    targetNode: NodeModel,
+    options?: NodeLinkModelOptions
+) {
+    const targetPort = targetNode.getInPort();
     if (!targetPort) {
         return null;
     }
     const link = createPortsLink(port, targetPort, options);
-    link.setSourceNode(node);
-    link.setTargetNode(node);
+    link.setSourceNode(sourceNode);
+    link.setTargetNode(targetNode);
     return link;
 }
 
@@ -296,20 +524,15 @@ export const getModelId = (nodeId: string) => {
 
 // calculate entry node height based on number of functions
 export const calculateEntryNodeHeight = (numFunctions: number, isExpanded: boolean) => {
-    const PADDING = 8;
-    const BASE_HEIGHT = 64 + PADDING;
-    const FUNCTION_HEIGHT = 40 + PADDING;
-    const VIEW_ALL_BUTTON_HEIGHT = 40;
-
     if (isExpanded) {
-        return BASE_HEIGHT + numFunctions * FUNCTION_HEIGHT + PADDING + VIEW_ALL_BUTTON_HEIGHT;
+        return ENTRY_HEADER_HEIGHT + numFunctions * ENTRY_ROW_HEIGHT + ROW_PADDING + ENTRY_VIEW_ALL_BUTTON_HEIGHT;
     }
 
     if (numFunctions <= 2) {
-        return BASE_HEIGHT + numFunctions * FUNCTION_HEIGHT + PADDING;
+        return ENTRY_HEADER_HEIGHT + numFunctions * ENTRY_ROW_HEIGHT + ROW_PADDING;
     }
 
-    return BASE_HEIGHT + 2 * FUNCTION_HEIGHT + PADDING + VIEW_ALL_BUTTON_HEIGHT;
+    return ENTRY_HEADER_HEIGHT + 2 * ENTRY_ROW_HEIGHT + ROW_PADDING + ENTRY_VIEW_ALL_BUTTON_HEIGHT;
 };
 
 export const calculateGraphQLNodeHeight = (
@@ -372,8 +595,5 @@ export const getWorkflowEventPortName = (event: CDWorkflowEvent) => {
 
 // calculate workflow node height based on the number of event and human task rows
 export const calculateWorkflowNodeHeight = (numRows: number) => {
-    const PADDING = 8;
-    const BASE_HEIGHT = 64 + PADDING;
-    const ROW_HEIGHT = 40 + PADDING;
-    return BASE_HEIGHT + numRows * ROW_HEIGHT + (numRows > 0 ? PADDING : 0);
+    return ENTRY_HEADER_HEIGHT + numRows * ENTRY_ROW_HEIGHT + (numRows > 0 ? ROW_PADDING : 0);
 };
