@@ -317,7 +317,17 @@ public class ExpressionEditorService implements ExtendedLanguageServerService {
         Optional<TextEdit> importTextEdit = expressionEditorContext.getImport(importStatement);
         importTextEdit.ifPresent(textEdit ->
                 PackageUtil.pullModuleAndNotify(lsClientLogger, ModuleInfo.from(moduleId)));
-        response.setPrefix(aliased ? prefix : naturalPrefix);
+        if (aliased) {
+            // An allocated alias never collides with a reserved keyword, so it is referenced verbatim.
+            response.setPrefix(prefix);
+        } else {
+            // The natural prefix is used by the client to reference the module in source, so escape it when the
+            // module segment is a reserved keyword. importStatement carries no `as` clause on this path.
+            String[] moduleParts = importStatement.split("/");
+            String prefixOrg = moduleParts.length > 1 ? moduleParts[0] : "";
+            String prefixModule = CommonUtils.unescapeModuleName(moduleParts[moduleParts.length - 1].split(":")[0]);
+            response.setPrefix(CommonUtils.escapeModulePrefix(prefixOrg, prefixModule));
+        }
         response.setModuleId(moduleId);
     }
 
