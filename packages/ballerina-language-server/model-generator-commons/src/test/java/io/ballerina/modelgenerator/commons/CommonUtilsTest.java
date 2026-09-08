@@ -85,12 +85,16 @@ public class CommonUtilsTest {
                 // ... but a keyword sub-segment of a lang library must be escaped.
                 {"ballerina/lang.xml", "ballerina/lang.'xml"},
                 {"ballerina/time", "ballerina/time"},
+                // Already-escaped input is left untouched (idempotent).
+                {"ballerinax/hubspot.crm.'import", "ballerinax/hubspot.crm.'import"},
         };
     }
 
     @Test(dataProvider = "escapeImportStatements")
     public void testEscapeImportStatement(String rawImport, String expectedEscaped) {
         Assert.assertEquals(CommonUtils.escapeImportStatement(rawImport), expectedEscaped);
+        // Re-escaping an escaped statement is a no-op.
+        Assert.assertEquals(CommonUtils.escapeImportStatement(expectedEscaped), expectedEscaped);
     }
 
     @DataProvider(name = "escapeModulePrefixes")

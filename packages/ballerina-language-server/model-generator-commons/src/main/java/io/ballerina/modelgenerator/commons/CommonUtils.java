@@ -978,9 +978,6 @@ public class CommonUtils {
      * @return the import statement
      */
     public static String getImportStatement(String orgName, String packageName, String moduleName) {
-        // Returns the raw module identifier. It is used both as a machine identifier (parsed back by
-        // ModuleInfo.from, passed to central resolution, used as a lookup key) and as the basis for the emitted
-        // import line. Reserved-keyword segments are escaped only at source emission (see escapeModuleName).
         StringBuilder importStatement = new StringBuilder();
         if (!orgName.isEmpty()) {
             importStatement.append(orgName).append("/");
