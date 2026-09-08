@@ -37,7 +37,7 @@ import {
     toSelectionRequest,
     withRestoredServiceLibraries,
 } from "./library-selection";
-import { collectClassMemberTypeRefs, TYPE_CLASS } from "./class-typedefs";
+import { collectClassMemberTypeRefs, isClassTypeDef } from "./class-typedefs";
 import { getAnthropicClient, ANTHROPIC_HAIKU } from "../ai-client";
 import { GenerationType } from "./libraries";
 // import { getRequiredTypesFromLibJson } from "../healthcare/healthcare";
@@ -279,10 +279,10 @@ CRITICAL RULES:
 2. Your ONLY task is selection - include or exclude items, NEVER modify field values.
 3. Copy all field values EXACTLY as provided - preserve every character including backslashes and special characters.
 4. For resource functions: "accessor" and "paths" are SEPARATE fields - NEVER combine them.
-5. A library is relevant if ANY of its clients, functions, services, classes, or annotations match the query. A service matches when its "doc" (what the service is for), its "listenerDoc" (how it is triggered), its name, or ANY ONE of its handlers under "methods", is what the query needs. List each matching service under the library's "services" field, copying its "listener" and "name" verbatim; omit the services that do not match. If a library matches ONLY via its services, still include the library in the output with empty/omitted clients and functions.
-6. "doc", "listenerDoc" and a handler's "doc" are evidence to reason over, never fields to copy: the response carries only "listener" and "name" for a service.
-7. "classes" are types the library hands back that carry callable methods (a spreadsheet's Sheet, a connection's Session). A class matches when its name, its "description", or ANY ONE of its methods under "functions" is what the query needs. List each matching class under the library's "classes" field as its NAME ONLY, copied verbatim — never as an object, and never narrowed to selected methods. A query about a class method is one of the most common kinds: if the query asks to do something to a thing the library returns, look here before concluding the library does not match.
-8. "annotations" are evidence only and have NO response field. Never emit them. If a library matches only via an annotation, include the library with its other fields empty/omitted.`;
+5. A library is relevant if ANY of its clients, functions, services, classes, or annotations match the query. When a library matches via only one of these, still include it, leaving the other fields empty or omitted.
+6. A service matches on its "doc", its "listenerDoc", its name, or ANY ONE of its handlers under "methods". List each match under "services", copying "listener" and "name" verbatim. "doc", "listenerDoc" and a handler's "doc" are evidence to reason over, never fields to copy.
+7. A class - "classes" also carries the library's object types - matches on its name, its "description", or ANY ONE of its methods under "functions". List each match under "classes" as its NAME ONLY, copied verbatim: never as an object, and never narrowed to selected methods.
+8. "annotations" are evidence only and have NO response field. Never emit them.`;
 
     const getLibUserPrompt = `You will be provided with a list of libraries, clients, and their functions, and a user query.
 
@@ -308,7 +308,6 @@ CRITICAL - Field Preservation:
 - The "paths" field is separate - do NOT merge with accessor.
 - Copy all values exactly - preserve backslashes, dots, and special characters.
 - "classes" is an array of NAME STRINGS, not objects. Do not list a class's methods in the response.
-- "annotations" has no response field. Never emit one.
 
 Return the filtered subset with IDENTICAL field values.
 
@@ -726,7 +725,7 @@ function collectServiceTypeRefs(service: Service): Type[] {
 function getOwnRecordRefs(functions: AbstractFunction[], allTypeDefs: TypeDefinition[], services?: Service[], annotations?: Annotation[], selectedClasses?: TypeDefinition[]): TypeDefinition[] {
     const ownRecords = new Map<string, TypeDefinition>();
 
-    // Seed with the classes the model named; the TYPE_CLASS arm below then reaches what their methods name.
+    // Seed with the classes the model named; the class arm below then reaches what their methods name.
     for (const typeDef of selectedClasses ?? []) {
         ownRecords.set(typeDef.name, typeDef);
     }
@@ -785,7 +784,7 @@ function getOwnRecordRefs(functions: AbstractFunction[], allTypeDefs: TypeDefini
                 const foundTypes = addInternalRecord(member.type, ownRecords, allTypeDefs);
                 typesToProcess.push(...foundTypes);
             }
-        } else if (typeDef.type === TYPE_CLASS) {
+        } else if (isClassTypeDef(typeDef)) {
             // A class's methods name types the reader needs. Without this arm a class was a leaf, and a
             // type reachable only through one of its methods reached the prompt undefined.
             for (const ref of collectClassMemberTypeRefs(typeDef)) {
@@ -966,7 +965,7 @@ function getExternalTypeDefRefs(
             for (const member of unionDef.members) {
                 addExternalRecord(member.type, externalRecords);
             }
-        } else if (typeDef.type === TYPE_CLASS) {
+        } else if (isClassTypeDef(typeDef)) {
             // External counterpart of the internal arm, walking the same refs so the two cannot diverge.
             for (const ref of collectClassMemberTypeRefs(typeDef)) {
                 addExternalRecord(ref, externalRecords);

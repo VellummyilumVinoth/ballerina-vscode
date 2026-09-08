@@ -15,6 +15,8 @@
 // under the License.
 
 import * as assert from "assert";
+import * as fs from "fs";
+import * as path from "path";
 import {
     TYPE_CLASS,
     collectClassMemberTypeRefs,
@@ -267,5 +269,47 @@ suite("selection batching — class members count toward the large-library split
     test("a library with neither clients nor classes counts zero", () => {
         const request = toSelectionRequest({ name: "lib", description: "", clients: [], typeDefs: [] } as Library, false);
         assert.strictEqual(getSelectableMemberCount(request), 0);
+    });
+});
+
+suite("selection request — malformed class members", () => {
+    test("a null member, a missing parameter list and a missing return do not throw", () => {
+        const broken = classTypeDef("Sheet", [
+            null,
+            { name: "noParams", type: "Normal Function", return: { type: { name: "int" } } },
+            { name: "noReturn", type: "Normal Function", parameters: [] },
+            { name: "getCell", type: "Normal Function", parameters: [{ name: "row" }], return: { type: { name: "int" } } },
+        ]);
+        const entries = toRequestClasses([broken]);
+        assert.deepStrictEqual(
+            entries![0].functions.map((f) => (f as { name: string }).name),
+            ["noParams", "noReturn", "getCell"]
+        );
+    });
+
+    test("a member with no name is dropped rather than sent nameless", () => {
+        const broken = classTypeDef("Sheet", [
+            { type: "Normal Function", parameters: [], return: { type: { name: "int" } } },
+            { name: "ok", type: "Normal Function", parameters: [], return: { type: { name: "int" } } },
+        ]);
+        assert.deepStrictEqual(
+            toRequestClasses([broken])![0].functions.map((f) => (f as { name: string }).name),
+            ["ok"]
+        );
+    });
+});
+
+/** `function-registry` cannot be imported in a unit test (it pulls in vscode), so pin the invariant here. */
+suite("closure — class detection stays consistent with the rest of the module", () => {
+    test("function-registry compares no typeDef.type against TYPE_CLASS directly", () => {
+        const source = fs.readFileSync(
+            path.join(__dirname, "../../../../src/features/ai/utils/libs/function-registry.ts"),
+            "utf-8"
+        );
+        assert.ok(
+            !/===\s*TYPE_CLASS/.test(source),
+            "use isClassTypeDef(); a direct === TYPE_CLASS check skips classes from older language servers"
+        );
+        assert.ok(source.includes("isClassTypeDef(typeDef)"), "the closure must guard on the shared predicate");
     });
 });

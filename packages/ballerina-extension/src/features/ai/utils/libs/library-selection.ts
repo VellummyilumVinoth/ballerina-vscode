@@ -79,6 +79,9 @@ export function getSelectableMemberCount(lib: GetFunctionsRequest): number {
 /**
  * Whether a request entry gives the selection model no choice to make.
  *
+ * Classes are deliberately not counted: a class-only library passes through with all of them kept, rather
+ * than being sent to a model that could drop it outright with no restore guard to undo that.
+ *
  * Three things must all be absent, and the third is the one that reads oddly. A library with no client
  * functions and no module-level functions has nothing *functional* to select — every trigger package is
  * that shape — but it may still declare many service types, and choosing among those is a decision.
@@ -416,20 +419,18 @@ function toRequestClientFunctions(
 ): (MinifiedRemoteFunction | MinifiedResourceFunction)[] {
     const output: (MinifiedRemoteFunction | MinifiedResourceFunction)[] = [];
 
-    for (const item of functions) {
+    // Guarded at every hop: this is also handed a class's `functions`, which is `any[]` off the wire, and
+    // a throw here costs the caller every library rather than one member.
+    for (const item of functions ?? []) {
+        if (!item) {
+            continue;
+        }
+        const parameters = (item.parameters ?? []).map((param) => param?.name).filter(Boolean) as string[];
+        const returnType = item.return?.type?.name;
         if ("accessor" in item) {
-            output.push({
-                accessor: item.accessor,
-                paths: item.paths,
-                parameters: item.parameters.map((param) => param.name),
-                returnType: item.return.type.name,
-            });
-        } else if (item.type !== TYPE_CONSTRUCTOR) {
-            output.push({
-                name: item.name,
-                parameters: item.parameters.map((param) => param.name),
-                returnType: item.return.type.name,
-            });
+            output.push({ accessor: item.accessor, paths: item.paths ?? [], parameters, returnType });
+        } else if (item.type !== TYPE_CONSTRUCTOR && item.name) {
+            output.push({ name: item.name, parameters, returnType });
         }
     }
 
