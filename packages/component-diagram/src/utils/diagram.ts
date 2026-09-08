@@ -17,7 +17,13 @@
  */
 import createEngine, { DiagramEngine, DiagramModel, PortModel } from "@projectstorm/react-diagrams";
 import { NodePortFactory, NodePortModel } from "../components/NodePort";
-import { NodeLinkFactory, NodeLinkModel, NodeLinkModelOptions } from "../components/NodeLink";
+import {
+    NodeLinkFactory,
+    NodeLinkModel,
+    NodeLinkModelOptions,
+    Point2D,
+    sampleBezierPath,
+} from "../components/NodeLink";
 import { OverlayLayerFactory } from "../components/OverlayLayer";
 import { DagreEngine } from "../resources/dagre/DagreEngine";
 import { NodeModel } from "./types";
@@ -41,11 +47,12 @@ import {
     CDConnection,
     CDResourceFunction,
     CDFunction,
+    CDModel,
     CDService,
     CDWorkflow,
     CDWorkflowEvent,
 } from "@wso2/ballerina-core";
-import { GQLFuncListType, GQLState, PREVIEW_COUNT } from "../components/Diagram";
+import { GQLFuncListType, GQLState, GroupKey, PREVIEW_COUNT, SHOW_ALL_THRESHOLD } from "../components/Diagram";
 
 export function generateEngine(): DiagramEngine {
     const engine = createEngine({
@@ -190,7 +197,7 @@ const ENTRY_HEADER_HEIGHT = 64 + ROW_PADDING;
 const ENTRY_ROW_HEIGHT = 40 + ROW_PADDING;
 const ENTRY_VIEW_ALL_BUTTON_HEIGHT = 40;
 
-interface BoundingBox {
+export interface BoundingBox {
     left: number;
     right: number;
     top: number;
@@ -203,7 +210,7 @@ interface BoundingBox {
  * connection and listener nodes never set the model's width/height fields (their box comes from
  * fixed CSS sizing instead), so those fall back to the matching size constants.
  */
-function getNodeBoundingBox(node: NodeModel): BoundingBox {
+export function getNodeBoundingBox(node: NodeModel): BoundingBox {
     const type = node.getType();
     const defaultWidth = type === NodeTypes.CONNECTION_NODE
         ? CON_NODE_WIDTH
@@ -288,19 +295,70 @@ export function getPortAnchorY(node: NodeModel, port: PortModel | null | undefin
 }
 
 /**
- * autoDistribute() lays nodes out in fixed left-to-right columns, but every link is still a
- * plain straight line between its source and target port (NodeLinkModel always uses curvyness:
- * 0, and nothing else ever adds waypoints). Whenever a link's endpoints sit in non-adjacent
- * columns - e.g. an automation or a service function linking straight to a connection while the
- * workflow column exists in between - that straight line can cut right through an unrelated
- * node occupying the column it skips over.
+ * Samples per bezier segment used when asking where a link actually runs. A segment spans a few
+ * hundred px at most in this layout, so ~64 chords keep the polyline within a small fraction of a
+ * pixel of the true curve - far finer than the node boxes (>= 64px tall) being tested against.
+ */
+const CURVE_SAMPLES_PER_SEGMENT = 64;
+
+/**
+ * Whether the segment `a`-`b` touches `box`, via Liang-Barsky parametric clipping: the segment
+ * enters the box's X slab over `t` in `[txEnter, txExit]` and its Y slab over `[tyEnter, tyExit]`,
+ * and intersects the box exactly when those two ranges overlap inside `[0, 1]`. A segment running
+ * parallel to a slab (`delta === 0`) either lies within it for all `t` or misses it entirely.
+ */
+function segmentIntersectsBox(a: Point2D, b: Point2D, box: BoundingBox): boolean {
+    let enter = 0;
+    let exit = 1;
+    const slabs: Array<[number, number, number, number]> = [
+        [b.x - a.x, a.x, box.left, box.right],
+        [b.y - a.y, a.y, box.top, box.bottom],
+    ];
+    for (const [delta, origin, low, high] of slabs) {
+        if (delta === 0) {
+            if (origin < low || origin > high) {
+                return false;
+            }
+            continue;
+        }
+        const t1 = (low - origin) / delta;
+        const t2 = (high - origin) / delta;
+        enter = Math.max(enter, Math.min(t1, t2));
+        exit = Math.min(exit, Math.max(t1, t2));
+        if (enter > exit) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/** Whether the curve NodeLinkModel would draw through `points` passes through `box`. */
+function curveCrossesBox(points: Point2D[], box: BoundingBox): boolean {
+    const polyline = sampleBezierPath(points, CURVE_SAMPLES_PER_SEGMENT);
+    return polyline.some((point, index) => index > 0 && segmentIntersectsBox(polyline[index - 1], point, box));
+}
+
+/**
+ * autoDistribute() lays nodes out in fixed left-to-right columns. Whenever a link's endpoints sit
+ * in non-adjacent columns - e.g. an automation or a service function linking straight to a
+ * connection while the workflow column exists in between - the link can cut right through an
+ * unrelated node occupying a column it skips over. This pass finds those links and adds two
+ * waypoints that route them through the nearest free vertical gap in the offending column
+ * instead - above or below whichever node(s) are in the way - rather than through it.
  *
- * This pass is a general geometric check (it doesn't know or care that the "workflow" column is
- * the one usually in the way, so it keeps working if more columns are ever inserted between
- * existing ones): for every link, it looks for nodes whose column lies strictly between the
- * link's two endpoints, and whose box the straight line would cross. When it finds one, it adds
- * two waypoints that route the link through the nearest free vertical gap in that column instead
- * - above or below whichever node(s) are in the way - rather than through them.
+ * It is a general geometric check (it doesn't know or care that the "workflow" column is the one
+ * usually in the way, so it keeps working if more columns are ever inserted between existing
+ * ones), and it asks the question against the curve NodeLinkModel actually paints, by sampling
+ * the very same bezier segments (see sampleBezierPath / getBezierSegments) rather than against
+ * the straight chord between the link's endpoints.
+ *
+ * Testing the chord is what this pass used to do, and it is *not* a safe approximation: with a
+ * horizontal tangent forced at both ends, a link deliberately bows away from its chord by up to
+ * half the segment's height. A `GET /f` function row linking to the lower of two connections
+ * passed 0.3px clear of a stacked workflow node's top edge as a chord while the drawn curve
+ * entered that node by 4.4px - visible as a link clipping the box's corner, with this pass
+ * reporting nothing wrong. Sampling the real curve removes that whole class of near-miss by
+ * construction, instead of trying to cover the bow with a bigger clearance margin.
  */
 export function avoidLinkObstructions(engine: DiagramEngine) {
     const model = engine.getModel();
@@ -323,63 +381,93 @@ export function avoidLinkObstructions(engine: DiagramEngine) {
         const sourceAnchorY = getPortAnchorY(sourceNode, link.getSourcePort());
         const targetAnchorY = getPortAnchorY(targetNode, link.getTargetPort());
 
-        // Columns are always laid out left to right; if the two ends are in the same or
-        // adjacent columns there's no room for another node to sit in between them.
+        // Out/function ports sit on their node's inner (facing) edge and in-ports on the target's,
+        // so a link spans horizontally from one box's edge to the other's. Which one is on the
+        // left is read off the layout rather than assumed, so this stays correct for a link ever
+        // drawn right-to-left.
         const sourceIsLeft = sourceBox.left <= targetBox.left;
         const leftBox = sourceIsLeft ? sourceBox : targetBox;
         const rightBox = sourceIsLeft ? targetBox : sourceBox;
-        if (rightBox.left <= leftBox.right) {
-            return;
-        }
-
         const anchorLeft = { x: leftBox.right, y: sourceIsLeft ? sourceAnchorY : targetAnchorY };
         const anchorRight = { x: rightBox.left, y: sourceIsLeft ? targetAnchorY : sourceAnchorY };
-        const yAtX = (x: number) => {
-            const t = (x - anchorLeft.x) / (anchorRight.x - anchorLeft.x);
-            return anchorLeft.y + t * (anchorRight.y - anchorLeft.y);
-        };
+        if (anchorRight.x <= anchorLeft.x) {
+            return; // same or overlapping columns - no horizontal span for anything to sit in
+        }
 
-        // Nodes whose entire column lies strictly between the two endpoints (e.g. the workflow
-        // column, when the link skips straight from an entry node to a connection).
-        const betweenBoxes = allNodes
+        // Every node whose X-range overlaps the link's own horizontal span at all. Since a
+        // segment's curve never leaves the span between its endpoints' X coordinates (see
+        // getBezierSegments), no other node can possibly be crossed - and defining the set by
+        // overlap rather than by "sits strictly between the two columns" is what makes the detour
+        // construction below provably safe.
+        const obstructions = allNodes
             .filter((node) => node !== sourceNode && node !== targetNode)
             .map(getNodeBoundingBox)
-            .filter((box) => box.left >= anchorLeft.x && box.right <= anchorRight.x);
-        if (betweenBoxes.length === 0) {
+            .filter((box) => box.right > anchorLeft.x && box.left < anchorRight.x);
+        const straightCurve = [anchorLeft, anchorRight];
+        if (!obstructions.some((box) => curveCrossesBox(straightCurve, box))) {
             return;
         }
 
-        const crossesBox = (box: BoundingBox) => {
-            const lo = Math.min(yAtX(box.left), yAtX(box.right));
-            const hi = Math.max(yAtX(box.left), yAtX(box.right));
-            return lo <= box.bottom && hi >= box.top;
-        };
-        if (!betweenBoxes.some(crossesBox)) {
+        // Route around every overlapping node - not just the one(s) the curve happens to cross -
+        // so the detour lane is guaranteed clear of all of their siblings too.
+        const columnLeft = Math.min(...obstructions.map((box) => box.left));
+        const columnRight = Math.max(...obstructions.map((box) => box.right));
+        const detourX = NODE_GAP_X / 4;
+
+        // The detour is only sound while both bend points land inside the link's own span and
+        // outside every obstruction's X-range, which is what confines its outer segments to
+        // obstruction-free horizontal bands (see the safety argument below). In the current
+        // column layout that always holds for a real obstruction: columns are disjoint X-bands
+        // separated by NODE_GAP_X, and this link's span runs from one column's right edge to
+        // another's left edge, so an overlapping node's column is wholly inside the span with a
+        // full NODE_GAP_X of slack at each end. Bailing out is still the right answer if that ever
+        // stops being true - a bend point placed past its own endpoint would fold the link back on
+        // itself, which reads far worse than the crossing it was trying to avoid.
+        if (columnLeft - detourX <= anchorLeft.x || columnRight + detourX >= anchorRight.x) {
             return;
         }
 
-        // Route around every node physically in that column - not just the one(s) the straight
-        // line happens to cross - so the detour lane is guaranteed clear of all of its siblings.
-        const columnLeft = Math.min(...betweenBoxes.map((box) => box.left));
-        const columnRight = Math.max(...betweenBoxes.map((box) => box.right));
-        const naiveY = yAtX((columnLeft + columnRight) / 2);
+        // Where the link currently runs as it passes the obstructing column - the lane closest to
+        // this is the one that disturbs the link's shape least.
+        const columnCenterX = (columnLeft + columnRight) / 2;
+        const naiveY = sampleBezierPath(straightCurve, CURVE_SAMPLES_PER_SEGMENT)
+            .reduce((closest, point) =>
+                Math.abs(point.x - columnCenterX) < Math.abs(closest.x - columnCenterX) ? point : closest
+            ).y;
 
-        const sortedColumn = [...betweenBoxes].sort((a, b) => a.top - b.top);
-        const gaps: Array<{ top: number; bottom: number }> = [];
-        let cursor = -Infinity;
-        sortedColumn.forEach((box) => {
-            gaps.push({ top: cursor, bottom: box.top - LINK_DETOUR_MARGIN });
-            cursor = box.bottom + LINK_DETOUR_MARGIN;
-        });
-        gaps.push({ top: cursor, bottom: Infinity });
+        // Every Y band the lane must stay out of: each obstruction's box inflated by the clearance
+        // margin, with overlapping bands merged. Merging - rather than assuming the boxes are
+        // disjoint and more than 2x the margin apart - is what guarantees the chosen lane clears
+        // *all* of them: two nodes sitting closer together than that (or overlapping outright, as
+        // nodes in different columns caught by the span test may well do) collapse into a single
+        // blocked band instead of leaving a phantom gap between them for the lane to land in.
+        const blockedBands = obstructions
+            .map((box) => ({ top: box.top - LINK_DETOUR_MARGIN, bottom: box.bottom + LINK_DETOUR_MARGIN }))
+            .sort((a, b) => a.top - b.top)
+            .reduce<Array<{ top: number; bottom: number }>>((bands, band) => {
+                const previous = bands[bands.length - 1];
+                if (previous && band.top <= previous.bottom) {
+                    previous.bottom = Math.max(previous.bottom, band.bottom);
+                    return bands;
+                }
+                bands.push({ ...band });
+                return bands;
+            }, []);
 
-        // Pick whichever free gap requires the smallest detour from the straight-line Y. A gap
-        // whose bottom ends up above its top has no real room in it (two obstructing nodes sit
-        // closer together than 2x the margin) and must be skipped, not clamped into.
+        // The free lanes between those bands: above the first, between each consecutive pair, and
+        // below the last. Merging leaves every interior lane with real room in it, and the two
+        // unbounded outer lanes mean there is always at least one candidate.
+        const lanes = [
+            { top: -Infinity, bottom: blockedBands[0].top },
+            ...blockedBands.slice(1).map((band, index) => ({ top: blockedBands[index].bottom, bottom: band.top })),
+            { top: blockedBands[blockedBands.length - 1].bottom, bottom: Infinity },
+        ];
+
+        // Pick whichever free lane requires the smallest detour from where the link runs now.
         let laneY = naiveY;
         let bestDistance = Infinity;
-        gaps.filter((gap) => gap.bottom >= gap.top).forEach((gap) => {
-            const candidateY = Math.min(Math.max(naiveY, gap.top), gap.bottom);
+        lanes.forEach((lane) => {
+            const candidateY = Math.min(Math.max(naiveY, lane.top), lane.bottom);
             const distance = Math.abs(candidateY - naiveY);
             if (distance < bestDistance) {
                 bestDistance = distance;
@@ -387,10 +475,436 @@ export function avoidLinkObstructions(engine: DiagramEngine) {
             }
         });
 
-        const detourX = NODE_GAP_X / 4;
+        // Why the resulting `source -> bend1 -> bend2 -> target` link is clear of every
+        // obstruction, without needing to re-test the new curve:
+        // - The middle segment is flat at laneY (its endpoints share that Y - see
+        //   getBezierSegments), and laneY sits at least LINK_DETOUR_MARGIN clear of every
+        //   obstruction's box by construction of the lanes above.
+        // - The outer segments stay within their own endpoints' X spans, [anchorLeft.x, columnLeft
+        //   - detourX] and [columnRight + detourX, anchorRight.x]. No obstruction reaches either
+        //   band: columnLeft/columnRight are the extremes of the whole obstruction set, so every
+        //   obstruction's box lies inside [columnLeft, columnRight]. And nothing outside that set
+        //   can be crossed either, since the set already includes everything overlapping the
+        //   link's span.
         link.point(columnLeft - detourX, laneY, 1);
         link.point(columnRight + detourX, laneY, 2);
     });
+}
+
+function getGraphQLGroupLabel(accessor?: string, name?: string): GroupKey | null {
+    if (accessor === "get") return "Query";
+    if (accessor === "subscribe") return "Subscription";
+    if (!accessor && name) return "Mutation";
+    return null;
+}
+
+function partitionRegularServiceFunctions(
+    service: CDService,
+    expandedNodes: Set<string>
+): { visible: Array<CDFunction | CDResourceFunction>; hidden: Array<CDFunction | CDResourceFunction> } {
+    const serviceFunctions: Array<CDFunction | CDResourceFunction> = [];
+    if (service.remoteFunctions?.length) serviceFunctions.push(...service.remoteFunctions);
+    if (service.resourceFunctions?.length) serviceFunctions.push(...service.resourceFunctions);
+
+    const isExpanded = expandedNodes.has(service.uuid);
+    if (serviceFunctions.length <= SHOW_ALL_THRESHOLD || isExpanded) {
+        return { visible: serviceFunctions, hidden: [] };
+    }
+    return { visible: serviceFunctions.slice(0, PREVIEW_COUNT), hidden: serviceFunctions.slice(PREVIEW_COUNT) };
+}
+
+function partitionGraphQLServiceFunctions(
+    service: CDService,
+    expandedNodes: Set<string>,
+    groupOpen?: { Query: boolean; Subscription: boolean; Mutation: boolean; }
+): { visible: GQLFuncListType; hidden: GQLFuncListType } {
+    const serviceFunctions: Array<CDFunction | CDResourceFunction> = [];
+    if (service.remoteFunctions?.length) serviceFunctions.push(...service.remoteFunctions);
+    if (service.resourceFunctions?.length) serviceFunctions.push(...service.resourceFunctions);
+
+    const grouped = serviceFunctions.reduce((acc, fn) => {
+        const accessor = (fn as CDResourceFunction).accessor;
+        const name = (fn as CDFunction).name;
+        const group = getGraphQLGroupLabel(accessor, name);
+        if (!group) return acc;
+        (acc[group] ||= []).push(fn);
+        return acc;
+    }, {} as GQLFuncListType);
+
+    const visible: GQLFuncListType = {
+        Query: [],
+        Subscription: [],
+        Mutation: [],
+    };
+    const hidden: GQLFuncListType = {
+        Query: [],
+        Subscription: [],
+        Mutation: [],
+    };
+
+    (Object.keys(grouped) as GroupKey[]).forEach((group) => {
+        const items = grouped[group];
+        const isOpen = groupOpen ? !!groupOpen[group] : true; // default open if not provided
+        if (!isOpen) {
+            hidden[group].push(...items);
+            return;
+        }
+        const groupExpanded = expandedNodes.has(service.uuid + group);
+        if (items.length <= SHOW_ALL_THRESHOLD || groupExpanded) {
+            visible[group].push(...items);
+        } else {
+            visible[group].push(...items.slice(0, PREVIEW_COUNT));
+            hidden[group].push(...items.slice(PREVIEW_COUNT));
+        }
+    });
+
+    return { visible, hidden };
+}
+
+function createFunctionConnections(
+    funcs: Array<CDFunction | CDResourceFunction>,
+    nodes: NodeModel[],
+    node: EntryNodeModel,
+    portGetter: (func: CDFunction | CDResourceFunction, group?: GroupKey) => any,
+    links: NodeLinkModel[],
+    group?: GroupKey
+) {
+    funcs.forEach((func) => {
+        [...(func.connections ?? []), ...(func.workflows ?? [])].forEach((targetUuid) => {
+            const targetNode = nodes.find((n) => n.getID() === targetUuid);
+            if (targetNode) {
+                const port = portGetter(func, group);
+                if (port) {
+                    const link = createPortNodeLink(node, port, targetNode);
+                    if (link) {
+                        links.push(link);
+                    }
+                }
+            }
+        });
+        // link workflow:sendData calls to the specific data event of the workflow
+        Object.entries(func.workflowSendData ?? {}).forEach(([workflowUuid, eventNames]) => {
+            const workflowNode = nodes.find((n) => n.getID() === workflowUuid) as EntryNodeModel;
+            if (!workflowNode) {
+                return;
+            }
+            eventNames.forEach((eventName) => {
+                const port = portGetter(func, group);
+                if (!port) {
+                    return;
+                }
+                const eventPort = workflowNode.getEventPortByName(eventName);
+                if (eventPort) {
+                    const link = createPortsLink(port, eventPort);
+                    link.setSourceNode(node);
+                    link.setTargetNode(workflowNode);
+                    links.push(link);
+                }
+            });
+        });
+        // workflow:sendData calls whose data event cannot be matched are drawn as broken links
+        func.invalidWorkflowSendData?.forEach((workflowUuid) => {
+            const workflowNode = nodes.find((n) => n.getID() === workflowUuid);
+            if (workflowNode) {
+                const port = portGetter(func, group);
+                if (port) {
+                    const link = createPortNodeLink(node, port, workflowNode, { visible: true, broken: true });
+                    if (link) {
+                        links.push(link);
+                    }
+                }
+            }
+        });
+    });
+}
+
+/**
+ * Builds the full node/link graph for `project` - the same pipeline `Diagram.tsx` uses to feed
+ * `drawDiagram`/`autoDistribute`, extracted as a pure, engine-independent function so it can be
+ * driven directly by tests (see `checkNoLinkCrossesAnyNode` in `test/linkOverlapChecker.ts`)
+ * without needing a React render. `Diagram.tsx`'s own `getDiagramData` is a thin wrapper around
+ * this that supplies its own component state for `expandedNodes`/`graphQLGroupOpen`.
+ */
+export function buildDiagramData(
+    project: CDModel,
+    expandedNodes: Set<string>,
+    graphQLGroupOpen: Record<string, GQLState>
+): { nodes: NodeModel[]; links: NodeLinkModel[] } {
+    const nodes: NodeModel[] = [];
+    const links: NodeLinkModel[] = [];
+
+    // filtered autogenerated connections and connections with enableFlowModel as false
+    const filteredConnections = project.connections?.filter((connection) =>
+        !connection.symbol?.startsWith("_") && connection.enableFlowModel !== false
+    );
+    // Sort and create connections
+    const sortedConnections = sortItems(filteredConnections || []) as CDConnection[];
+    sortedConnections.forEach((connection, index) => {
+        const node = new ConnectionNodeModel(connection);
+        node.setPosition(0, 100 + index * 100);
+        nodes.push(node);
+    });
+
+    let startY = 100;
+
+    // Create workflow nodes first so service function rows can link to them.
+    // Their edges are created after the services and the automation below.
+    // Filter autogenerated workflows, mirroring the connection filtering above
+    const filteredWorkflows = project.workflows?.filter(
+        (workflow) => !workflow.symbol?.startsWith("_") && workflow.enableFlowModel !== false
+    );
+    const sortedWorkflows = sortItems(filteredWorkflows || []) as CDWorkflow[];
+    let workflowStartY = 100;
+    sortedWorkflows.forEach((workflow) => {
+        const workflowNode = new EntryNodeModel(workflow, "workflow");
+        const numRows = (workflow.events?.length ?? 0) + (workflow.humanTasks?.length ?? 0);
+        const nodeHeight = calculateWorkflowNodeHeight(numRows);
+        workflowNode.height = nodeHeight;
+        workflowNode.setPosition(0, workflowStartY);
+        nodes.push(workflowNode);
+        workflowStartY += nodeHeight + 16;
+    });
+
+    // Sort services by sortText before creating nodes
+    const sortedServices = sortItems(project.services || []) as CDService[];
+    sortedServices.forEach((service) => {
+        // Create entry node with calculated height
+        const node = new EntryNodeModel(service, "service");
+
+        const isGraphQL = service.type === "graphql:Service";
+        if (isGraphQL) {
+            const { visible, hidden } = partitionGraphQLServiceFunctions(
+                service,
+                expandedNodes,
+                graphQLGroupOpen[service.uuid] ?? { Query: true, Subscription: false, Mutation: false }
+            );
+            // Reusable function to create connections for a list of functions to a given port getter
+            const nodeHeight = calculateGraphQLNodeHeight(
+                visible,
+                hidden,
+                graphQLGroupOpen[service.uuid] || { Query: true, Subscription: false, Mutation: false });
+
+            node.height = nodeHeight;
+            node.setPosition(0, startY);
+            nodes.push(node);
+            startY += nodeHeight + 16;
+
+            // For GraphQL, handle visible and hidden per group
+            (Object.keys(visible) as GroupKey[]).forEach((group) => {
+                createFunctionConnections(
+                    visible[group],
+                    nodes,
+                    node,
+                    (func) => node.getFunctionPort(func),
+                    links,
+                    group
+                );
+            });
+
+            (Object.keys(hidden) as GroupKey[]).forEach((group) => {
+                createFunctionConnections(
+                    hidden[group],
+                    nodes,
+                    node,
+                    (_func, grp) => node.getGraphQLGroupPort(grp!),
+                    links,
+                    group
+                );
+            });
+
+        } else {
+
+            // Calculate height based on visible functions and expansion state
+            const totalFunctions = service.remoteFunctions.length + service.resourceFunctions.length;
+            const isExpanded = expandedNodes.has(service.uuid);
+            const nodeHeight = calculateEntryNodeHeight(totalFunctions, isExpanded);
+            node.height = nodeHeight;
+            node.setPosition(0, startY);
+            nodes.push(node);
+
+            startY += nodeHeight + 16;
+
+            const { hidden, visible } = partitionRegularServiceFunctions(service, expandedNodes);
+            createFunctionConnections(
+                visible,
+                nodes,
+                node,
+                (func) => node.getFunctionPort(func),
+                links
+            );
+
+            if (hidden.length > 0) {
+                createFunctionConnections(
+                    hidden,
+                    nodes,
+                    node,
+                    () => node.getViewAllResourcesPort(),
+                    links
+                );
+            }
+        }
+    });
+    // create automation
+    const automation = project.automation;
+    if (automation) {
+        const automationNode = new EntryNodeModel(automation, "automation");
+        nodes.push(automationNode);
+        // link connections
+        automation.connections?.forEach((connectionUuid) => {
+            const connectionNode = nodes.find((node) => node.getID() === connectionUuid);
+            if (connectionNode) {
+                const link = createNodesLink(automationNode, connectionNode);
+                if (link) {
+                    links.push(link);
+                }
+            }
+        });
+    }
+
+    // create workflow edges
+    sortedWorkflows.forEach((workflow) => {
+        const workflowNode = nodes.find((node) => node.getID() === workflow.uuid) as EntryNodeModel;
+        if (!workflowNode) {
+            return;
+        }
+
+        // link the services that trigger this workflow via workflow:run. When a specific
+        // function of the service runs the workflow, the link is already drawn from the
+        // function row (createFunctionConnections); only fall back to a service-level edge
+        const serviceFunctionLinksTo = (service: CDService, workflowUuid: string) =>
+            [...(service.remoteFunctions ?? []), ...(service.resourceFunctions ?? [])].some((func) =>
+                func.workflows?.includes(workflowUuid)
+            );
+        workflow.attachedServices?.forEach((serviceUuid) => {
+            const service = project.services?.find((item) => item.uuid === serviceUuid);
+            if (service && serviceFunctionLinksTo(service, workflow.uuid)) {
+                return;
+            }
+            const triggerNode = nodes.find((node) => node.getID() === serviceUuid);
+            if (triggerNode) {
+                const link = createNodesLink(triggerNode, workflowNode);
+                if (link) {
+                    links.push(link);
+                }
+            }
+        });
+
+        // link the automation that triggers this workflow via workflow:run
+        workflow.attachedFunctions?.forEach((triggerUuid) => {
+            const triggerNode = nodes.find((node) => node.getID() === triggerUuid);
+            if (triggerNode) {
+                const link = createNodesLink(triggerNode, workflowNode);
+                if (link) {
+                    links.push(link);
+                }
+            }
+        });
+
+        // draw broken links for workflow:sendData calls whose data event cannot be matched.
+        // Edges from a specific service function row are already drawn by createFunctionConnections
+        const serviceFunctionInvalidSendsTo = (service: CDService, workflowUuid: string) =>
+            [...(service.remoteFunctions ?? []), ...(service.resourceFunctions ?? [])].some((func) =>
+                func.invalidWorkflowSendData?.includes(workflowUuid)
+            );
+        const invalidSenderUuids = [
+            ...(workflow.invalidSendDataServices ?? []).filter((serviceUuid) => {
+                const service = project.services?.find((item) => item.uuid === serviceUuid);
+                return !(service && serviceFunctionInvalidSendsTo(service, workflow.uuid));
+            }),
+            ...(workflow.invalidSendDataFunctions ?? []),
+        ];
+        invalidSenderUuids.forEach((senderUuid) => {
+            const senderNode = nodes.find((node) => node.getID() === senderUuid);
+            if (senderNode) {
+                const link = createNodesLink(senderNode, workflowNode, { visible: true, broken: true });
+                if (link) {
+                    links.push(link);
+                }
+            }
+        });
+
+        // link the entry points that send data to this workflow via workflow:sendData. Edges
+        // from a specific service function row are already drawn by createFunctionConnections;
+        // only fall back to a service-level edge when no function row carries the link
+        const serviceFunctionSendsTo = (service: CDService, workflowUuid: string, eventName: string) =>
+            [...(service.remoteFunctions ?? []), ...(service.resourceFunctions ?? [])].some((func) =>
+                func.workflowSendData?.[workflowUuid]?.includes(eventName)
+            );
+        workflow.events?.forEach((event) => {
+            const eventPort = workflowNode.getEventPort(event);
+            if (!eventPort) {
+                return;
+            }
+            const senderUuids = [
+                ...(event.attachedServices ?? []).filter((serviceUuid) => {
+                    const service = project.services?.find((item) => item.uuid === serviceUuid);
+                    return !(service && serviceFunctionSendsTo(service, workflow.uuid, event.name));
+                }),
+                ...(event.attachedFunctions ?? []),
+            ];
+            senderUuids.forEach((senderUuid) => {
+                const senderNode = nodes.find((node) => node.getID() === senderUuid);
+                if (senderNode && senderNode.getOutPort()) {
+                    const link = createPortsLink(senderNode.getOutPort(), eventPort);
+                    link.setSourceNode(senderNode);
+                    link.setTargetNode(workflowNode);
+                    links.push(link);
+                }
+            });
+        });
+
+        // link this workflow to the connections used by its activities. Activities are not
+        // rendered on the overview — only the derived workflow → connection edges are drawn.
+        // Direct connections (e.g. a durable agent's model provider) are linked the same way.
+        const linkedConnections = new Set<string>();
+        workflow.connections?.forEach((connectionUuid) => {
+            if (linkedConnections.has(connectionUuid)) {
+                return;
+            }
+            linkedConnections.add(connectionUuid);
+            const connectionNode = nodes.find((node) => node.getID() === connectionUuid);
+            if (connectionNode) {
+                const link = createNodesLink(workflowNode, connectionNode);
+                if (link) {
+                    links.push(link);
+                }
+            }
+        });
+        workflow.activities?.forEach((activityUuid) => {
+            const activity = project.activities?.find((item) => item.uuid === activityUuid);
+            activity?.connections?.forEach((connectionUuid) => {
+                if (linkedConnections.has(connectionUuid)) {
+                    return;
+                }
+                linkedConnections.add(connectionUuid);
+                const connectionNode = nodes.find((node) => node.getID() === connectionUuid);
+                if (connectionNode) {
+                    const link = createNodesLink(workflowNode, connectionNode);
+                    if (link) {
+                        links.push(link);
+                    }
+                }
+            });
+        });
+    });
+
+    // create listeners
+    project.listeners?.forEach((listener) => {
+        const node = new ListenerNodeModel(listener);
+        nodes.push(node);
+        // link services
+        listener.attachedServices.forEach((serviceUuid) => {
+            const serviceNode = nodes.find((node) => node.getID() === serviceUuid);
+            if (serviceNode) {
+                const link = createNodesLink(node, serviceNode);
+                if (link) {
+                    links.push(link);
+                }
+            }
+        });
+    });
+
+    return { nodes, links };
 }
 
 export function registerListeners(engine: DiagramEngine) {

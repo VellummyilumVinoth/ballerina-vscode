@@ -22,6 +22,7 @@ import { CDService } from "@wso2/ballerina-core";
 import { Item, Menu, MenuItem, Popover, Icon, ThemeColors } from "@wso2/ui-toolkit";
 import { useDiagramContext } from "../../../DiagramContext";
 import { MoreVertIcon } from "../../../../resources/icons/nodes/MoreVertIcon";
+import { NODE_BORDER_COLOR } from "../../../../resources/constants";
 import { getEntryNodeFunctionPortName } from "../../../../utils/diagram";
 import { BaseNodeWidgetProps, EntryNodeModel } from "../EntryNodeModel";
 import { useClickWithDragTolerance } from "../../../../hooks/useClickWithDragTolerance";
@@ -48,7 +49,7 @@ const DashedBox = styled.div<NodeStyleProp>`
     gap: 8px;
     width: 100%;
     border: 2.5px dashed
-        ${(props: NodeStyleProp) => (props.hovered ? ThemeColors.HIGHLIGHT : ThemeColors.OUTLINE_VARIANT)};
+        ${(props: NodeStyleProp) => (props.hovered ? ThemeColors.HIGHLIGHT : NODE_BORDER_COLOR)};
     border-radius: 8px;
     background-color: ${ThemeColors.SURFACE_DIM};
     padding: 8px;

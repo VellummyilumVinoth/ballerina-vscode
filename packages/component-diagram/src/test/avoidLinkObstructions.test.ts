@@ -196,6 +196,40 @@ describe("avoidLinkObstructions", () => {
         expect(clearsA).toBe(true);
         expect(clearsB).toBe(true);
     });
+
+    test("clears both obstructions even when their boxes overlap vertically", () => {
+        // Two obstructing nodes whose Y bands overlap - a tall one and a short one inside it.
+        // Reading the free gaps straight off the boxes in top order leaves a phantom gap below the
+        // *short* node (y >= 238) that is still deep inside the tall one, and that phantom gap is
+        // the closest candidate to where this link runs, so it would be chosen. Blocked bands have
+        // to be merged before the gaps between them mean anything.
+        const automationNode = new EntryNodeModel(makeAutomation("automation-1"), "automation");
+        automationNode.setPosition(ENTRY_X, 0); // box: [0, 64]
+
+        const tallNode = new EntryNodeModel(makeWorkflow("workflow-1"), "workflow");
+        tallNode.height = 200;
+        tallNode.setPosition(WORKFLOW_X, 100); // box: [100, 300]
+
+        const shortNode = new EntryNodeModel(makeWorkflow("workflow-2"), "workflow");
+        shortNode.height = calculateWorkflowNodeHeight(0);
+        shortNode.setPosition(WORKFLOW_X, 150); // box: [150, 222] - wholly inside the tall one
+
+        const connectionNode = new ConnectionNodeModel(makeConnection("connection-1"));
+        connectionNode.setPosition(CONNECTION_X, 300); // box: [300, 364]
+
+        const link = createNodesLink(automationNode, connectionNode) as NodeLinkModel;
+
+        runObstructionPass([automationNode, tallNode, shortNode, connectionNode], link);
+
+        const points = link.getPoints();
+        expect(points).toHaveLength(4);
+        const laneY = points[1].getPosition().y;
+
+        const clearsTall = laneY <= 100 - LINK_DETOUR_MARGIN || laneY >= 300 + LINK_DETOUR_MARGIN;
+        const clearsShort = laneY <= 150 - LINK_DETOUR_MARGIN || laneY >= 222 + LINK_DETOUR_MARGIN;
+        expect(clearsTall).toBe(true);
+        expect(clearsShort).toBe(true);
+    });
 });
 
 describe("getPortAnchorY", () => {
@@ -284,5 +318,51 @@ describe("avoidLinkObstructions with a real function port (createPortNodeLink)",
         const laneY = points[1].getPosition().y;
         const clearsWorkflow = laneY <= 88 - LINK_DETOUR_MARGIN || laneY >= 104 + LINK_DETOUR_MARGIN;
         expect(clearsWorkflow).toBe(true);
+    });
+
+    test("reroutes a link whose chord clears an obstruction but whose drawn curve does not", () => {
+        // Regression for the escalation where `GET /f` -> the lower of two connections visibly
+        // clipped the corner of the second of two stacked workflow nodes. Reproduces that layout
+        // exactly (autoDistribute's real column spacing, a single-function service whose row
+        // anchors at y=196, workflows stacked at [100, 172] and [222, 294], the target connection
+        // centered at y=232), which puts the link's straight chord a *third of a pixel* clear of
+        // workflow2's top edge - so the old chord-based check found nothing wrong while the curve
+        // NodeLinkModel actually draws entered that node by ~4.4px.
+        const func = makeResourceFunction("get", "f");
+        const serviceNode = new EntryNodeModel(makeService("service-1", [func]), "service");
+        serviceNode.height = calculateEntryNodeHeight(1, false); // 128
+        serviceNode.setPosition(ENTRY_X, 100); // box: [100, 228], function row: 196
+
+        const workflowNodeA = new EntryNodeModel(makeWorkflow("workflow-1"), "workflow");
+        workflowNodeA.height = calculateWorkflowNodeHeight(0);
+        workflowNodeA.setPosition(WORKFLOW_X, 100); // box: [100, 172]
+
+        const workflowNodeB = new EntryNodeModel(makeWorkflow("workflow-2"), "workflow");
+        workflowNodeB.height = calculateWorkflowNodeHeight(0);
+        workflowNodeB.setPosition(WORKFLOW_X, 222); // box: [222, 294]
+
+        const connectionNode = new ConnectionNodeModel(makeConnection("connection-1"));
+        connectionNode.setPosition(CONNECTION_X, 200); // box: [200, 264], in-port center: 232
+
+        // The premise: the chord really does miss workflow2, so a pass reasoning about the chord
+        // would (correctly, for the chord) leave this link alone.
+        const chordYAt = (x: number) => 196 + ((x - ENTRY_NODE_WIDTH) / (CONNECTION_X - ENTRY_NODE_WIDTH)) * (232 - 196);
+        expect(chordYAt(WORKFLOW_X + ENTRY_NODE_WIDTH)).toBeLessThan(222);
+
+        const functionPort = serviceNode.getFunctionPort(func);
+        const link = createPortNodeLink(serviceNode, functionPort, connectionNode) as NodeLinkModel;
+
+        runObstructionPass([serviceNode, workflowNodeA, workflowNodeB, connectionNode], link);
+
+        const points = link.getPoints();
+        expect(points).toHaveLength(4);
+        const laneY = points[1].getPosition().y;
+        expect(points[2].getPosition().y).toBeCloseTo(laneY);
+
+        // The lane must clear both stacked workflows, and land in the gap between them rather than
+        // sweeping all the way above or below the pair - that gap is the smallest disturbance to
+        // where the link already ran.
+        expect(laneY).toBeGreaterThanOrEqual(172 + LINK_DETOUR_MARGIN);
+        expect(laneY).toBeLessThanOrEqual(222 - LINK_DETOUR_MARGIN);
     });
 });

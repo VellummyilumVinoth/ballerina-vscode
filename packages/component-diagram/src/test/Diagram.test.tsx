@@ -34,6 +34,7 @@ import model7 from '../stories/7-graphql-complex.json';
 import model8 from '../stories/8-multiple-connections-complex.json';
 import model9 from '../stories/9-workflow-overlap.json';
 import model10 from '../stories/10-workflow-function-port-overlap.json';
+import model11 from '../stories/11-stacked-workflows-overlap.json';
 
 // Helper function to convert sample data to CDModel format
 function convertToCDModel(sampleData: any): CDModel {
@@ -265,5 +266,10 @@ describe('Component Diagram - Snapshot Tests', () => {
     test('renders workflow function-port overlap correctly', async () => {
         const cdModel = convertToCDModel(model10);
         await renderAndCheckSnapshot(cdModel, 'workflow-function-port-overlap');
+    }, 15000);
+
+    test('renders stacked workflows overlap correctly', async () => {
+        const cdModel = convertToCDModel(model11);
+        await renderAndCheckSnapshot(cdModel, 'stacked-workflows-overlap');
     }, 15000);
 });
