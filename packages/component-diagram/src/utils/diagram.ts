@@ -429,11 +429,13 @@ export function avoidLinkObstructions(engine: DiagramEngine) {
         }
 
         // Left/right is read off the layout rather than assumed, so this stays correct for a link
-        // ever drawn right-to-left.
-        const [anchorLeft, anchorRight] =
-            anchors.source.x <= anchors.target.x
-                ? [anchors.source, anchors.target]
-                : [anchors.target, anchors.source];
+        // ever drawn right-to-left. `sourceIsLeft` also drives which waypoint gets inserted next
+        // to which endpoint below, so the point array - not just the obstruction math - stays
+        // correct for that case too.
+        const sourceIsLeft = anchors.source.x <= anchors.target.x;
+        const [anchorLeft, anchorRight] = sourceIsLeft
+            ? [anchors.source, anchors.target]
+            : [anchors.target, anchors.source];
         if (anchorRight.x <= anchorLeft.x) {
             return; // same or overlapping columns - no horizontal span for anything to sit in
         }
@@ -533,8 +535,25 @@ export function avoidLinkObstructions(engine: DiagramEngine) {
         //   obstruction's box lies inside [columnLeft, columnRight]. And nothing outside that set
         //   can be crossed either, since the set already includes everything overlapping the
         //   link's span.
-        link.point(columnLeft - detourX, laneY, 1);
-        link.point(columnRight + detourX, laneY, 2);
+        //
+        // That argument is about geometric position, but `link.point(x, y, index)` inserts by
+        // array index - index 0 is always the link's own source point and the last index is
+        // always its target point, whichever side of the layout each actually sits on. So the two
+        // waypoints have to be assigned to array slots by which endpoint they sit next to, not by
+        // left/right: when the source is the left anchor, slot 1 (next to the source) gets the
+        // left waypoint and slot 2 (next to the target) gets the right one; when the layout is
+        // ever reversed, that assignment flips too, so the array stays in the same left-to-right
+        // order the curve is drawn in either way. Getting this wrong wouldn't just look worse -
+        // it would silently invalidate the safety argument above, since an outer segment would
+        // then run between a source/target point and a waypoint on the *wrong* side, spanning
+        // back across the obstruction's own X-range instead of staying outside it.
+        const leftWaypoint = { x: columnLeft - detourX, y: laneY };
+        const rightWaypoint = { x: columnRight + detourX, y: laneY };
+        const [sourceSideWaypoint, targetSideWaypoint] = sourceIsLeft
+            ? [leftWaypoint, rightWaypoint]
+            : [rightWaypoint, leftWaypoint];
+        link.point(sourceSideWaypoint.x, sourceSideWaypoint.y, 1);
+        link.point(targetSideWaypoint.x, targetSideWaypoint.y, 2);
     });
 }
 

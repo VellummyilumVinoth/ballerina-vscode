@@ -365,4 +365,37 @@ describe("avoidLinkObstructions with a real function port (createPortNodeLink)",
         expect(laneY).toBeGreaterThanOrEqual(172 + LINK_DETOUR_MARGIN);
         expect(laneY).toBeLessThanOrEqual(222 - LINK_DETOUR_MARGIN);
     });
+
+    test("keeps its waypoints in geometric left-to-right order even when source sits on the right", () => {
+        // Nothing in today's 4-column layout ever builds a link this way round (every link flows
+        // listener -> entry -> workflow -> connection, left to right), but the obstruction/lane
+        // math above is direction-agnostic by design, so the point array it hands back has to be
+        // too. `link.point(x, y, index)` inserts by array index - index 0 is always the link's own
+        // source point and the last index its target point, regardless of which side of the
+        // layout each actually sits on - so this pins that the waypoint landing next to each
+        // endpoint is the one on that endpoint's own geometric side, not just "whichever index
+        // used to be right when source was always the left one".
+        const automationNode = new EntryNodeModel(makeAutomation("automation-1"), "automation");
+        automationNode.setPosition(CONNECTION_X, 0); // source, on the right: box [CONNECTION_X, +64]
+
+        const workflowNode = new EntryNodeModel(makeWorkflow("workflow-1"), "workflow");
+        workflowNode.height = calculateWorkflowNodeHeight(0);
+        workflowNode.setPosition(WORKFLOW_X, 20); // obstruction, in between
+
+        const connectionNode = new ConnectionNodeModel(makeConnection("connection-1"));
+        connectionNode.setPosition(ENTRY_X, 0); // target, on the left
+
+        const link = createNodesLink(automationNode, connectionNode) as NodeLinkModel;
+        runObstructionPass([automationNode, workflowNode, connectionNode], link);
+
+        const points = link.getPoints();
+        expect(points).toHaveLength(4);
+
+        // point[1] sits next to the source (automation, on the right) and point[2] next to the
+        // target (the connection, on the left) - so point[1]'s X must be the larger of the two,
+        // matching the source's own side, not the target's.
+        const nearSourceX = points[1].getPosition().x;
+        const nearTargetX = points[2].getPosition().x;
+        expect(nearSourceX).toBeGreaterThan(nearTargetX);
+    });
 });
