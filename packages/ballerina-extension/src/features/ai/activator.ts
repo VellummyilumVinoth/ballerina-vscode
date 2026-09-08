@@ -30,7 +30,7 @@ import {
     LOGIN_REQUIRED_WARNING_FOR_DEFAULT_MODEL
 } from './constants';
 import { isNotLoggedInError } from '../..//utils/ai/auth';
-import { DefaultProviderKind, GenerateAgentCodeRequest, ExecutionContext } from '@wso2/ballerina-core';
+import { DefaultProviderKind, GenerateAgentCodeRequest, ExecutionContext, SHARED_COMMANDS } from '@wso2/ballerina-core';
 import { resolveProjectPath } from '../../utils/project-utils';
 import { MESSAGES } from '../project';
 import { AICommandConfig } from './executors/base/AICommandExecutor';
@@ -84,6 +84,16 @@ export function activateAIFeatures(ballerinaExternalInstance: BallerinaExtension
     extension.context?.subscriptions.push(registerAgentsMdWatcher());
     if (extension.context) {
         agentStatusManager.init(extension.context);
+        extension.context.subscriptions.push(
+            commands.registerCommand(
+                SHARED_COMMANDS.SET_COPILOT_INLINE_STATUS,
+                (active: boolean) => agentStatusManager.setInlineStatusVisible(!!active)
+            ),
+            commands.registerCommand(
+                SHARED_COMMANDS.SET_COPILOT_AMBIENT_PRESENT,
+                (present: boolean) => commands.executeCommand('setContext', 'ballerina.copilotAmbientPresent', !!present)
+            )
+        );
     }
 
     // Register commands in test environment to test the AI features
@@ -170,7 +180,7 @@ export function activateAIFeatures(ballerinaExternalInstance: BallerinaExtension
         });
 
         commands.registerCommand('ballerina.test.ai.restoreCheckpoint', async (checkpoint: Checkpoint, skipArtifactWait?: boolean): Promise<void> => {
-            return await restoreWorkspaceSnapshot(checkpoint, skipArtifactWait);
+            await restoreWorkspaceSnapshot(checkpoint, skipArtifactWait);
         });
 
         commands.registerCommand('ballerina.test.ai.integrateCodeToWorkspace', async (tempProjectPath: string, modifiedFiles: string[], ctx: ExecutionContext): Promise<void> => {

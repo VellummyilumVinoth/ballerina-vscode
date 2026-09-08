@@ -95,8 +95,6 @@ import { handleRepeatableProperty } from "./node-property-utils";
 export { updateNodeProperties } from "./node-property-utils";
 hljs.registerLanguage("ballerina", ballerina);
 
-export const BALLERINA_INTEGRATOR_ISSUES_URL = "https://github.com/wso2/product-ballerina-integrator/issues";
-
 function convertAvailableNodeToPanelNode(
     node: AvailableNode,
     functionType?: FUNCTION_TYPE,
@@ -141,6 +139,9 @@ function convertAvailableNodeToPanelNode(
                 type={functionType === FUNCTION_TYPE.EXPRESSION_BODIED ? "DATA_MAPPER_CALL" : node.codedata.node}
                 size={16}
                 isDBConnection={isDBConnection}
+                // The prebuilt activities share one node kind, so the function they call is what tells
+                // them apart for colouring.
+                symbol={node.codedata.symbol}
             />
         ),
     };
@@ -401,6 +402,8 @@ export {
     // existing `utils/bi` importers are unaffected.
     convertConfig,
     DEFAULT_MODEL_PROVIDER_ITEM,
+    DURABLE_AGENT_FORM_ORDER,
+    orderFormFields,
 } from "./node-property-utils";
 
 export function getFormProperties(flowNode: FlowNode): NodeProperties {
