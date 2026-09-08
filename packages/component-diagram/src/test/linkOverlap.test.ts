@@ -42,18 +42,21 @@ import model9 from "../stories/9-workflow-overlap.json";
 import model10 from "../stories/10-workflow-function-port-overlap.json";
 import model11 from "../stories/11-stacked-workflows-overlap.json";
 
-const fixtures: Array<[string, CDModel]> = [
-    ["1-empty", model1 as unknown as CDModel],
-    ["2-only-automation", model2 as unknown as CDModel],
-    ["3-simple-service", model3 as unknown as CDModel],
-    ["4-multiple-services", model4 as unknown as CDModel],
-    ["5-connection-complex", model5 as unknown as CDModel],
-    ["6-ai-agent-complex", model6 as unknown as CDModel],
-    ["7-graphql-complex", model7 as unknown as CDModel],
-    ["8-multiple-connections-complex", model8 as unknown as CDModel],
-    ["9-workflow-overlap", model9 as unknown as CDModel],
-    ["10-workflow-function-port-overlap", model10 as unknown as CDModel],
-    ["11-stacked-workflows-overlap", model11 as unknown as CDModel],
+/** The imported JSON's inferred shape is narrower than CDModel's optional fields, hence the cast. */
+const fixture = (name: string, model: unknown): [string, CDModel] => [name, model as CDModel];
+
+const fixtures = [
+    fixture("1-empty", model1),
+    fixture("2-only-automation", model2),
+    fixture("3-simple-service", model3),
+    fixture("4-multiple-services", model4),
+    fixture("5-connection-complex", model5),
+    fixture("6-ai-agent-complex", model6),
+    fixture("7-graphql-complex", model7),
+    fixture("8-multiple-connections-complex", model8),
+    fixture("9-workflow-overlap", model9),
+    fixture("10-workflow-function-port-overlap", model10),
+    fixture("11-stacked-workflows-overlap", model11),
 ];
 
 describe("no link crosses an unrelated node", () => {

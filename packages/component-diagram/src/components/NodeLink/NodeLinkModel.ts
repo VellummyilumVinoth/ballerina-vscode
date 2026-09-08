@@ -40,10 +40,8 @@ const LINK_CURVATURE = 0.5;
 
 /**
  * Floor on the control-point offset so a short segment still reads as gently curved rather than
- * snapping to a straight line. Always hard-capped at the segment's own horizontal span (see
- * buildBezierSegment's clamp) so it can never push a control point past the far endpoint and
- * loop the curve back on itself - that cap wins over this floor whenever a segment is shorter
- * than it, e.g. a near-vertical segment or a very narrow detour lane.
+ * snapping to a straight line. See buildBezierSegment for how it interacts with the hard cap that
+ * keeps a control point from overshooting the far endpoint.
  */
 const LINK_MIN_CURVE_OFFSET = 20;
 
@@ -126,11 +124,13 @@ export function buildBezierPath(points: Point2D[]): string {
 /** The point at parameter `t` (0..1) on one cubic-bezier segment. */
 function pointOnSegment({ start, control1, control2, end }: BezierSegment, t: number): Point2D {
     const u = 1 - t;
-    const weights = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t];
-    const controls = [start, control1, control2, end];
+    const a = u * u * u;
+    const b = 3 * u * u * t;
+    const c = 3 * u * t * t;
+    const d = t * t * t;
     return {
-        x: controls.reduce((sum, point, index) => sum + weights[index] * point.x, 0),
-        y: controls.reduce((sum, point, index) => sum + weights[index] * point.y, 0),
+        x: a * start.x + b * control1.x + c * control2.x + d * end.x,
+        y: a * start.y + b * control1.y + c * control2.y + d * end.y,
     };
 }
 

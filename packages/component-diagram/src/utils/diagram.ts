@@ -52,7 +52,14 @@ import {
     CDWorkflow,
     CDWorkflowEvent,
 } from "@wso2/ballerina-core";
-import { GQLFuncListType, GQLState, GroupKey, PREVIEW_COUNT, SHOW_ALL_THRESHOLD } from "../components/Diagram";
+import {
+    DEFAULT_GQL_STATE,
+    GQLFuncListType,
+    GQLState,
+    GroupKey,
+    PREVIEW_COUNT,
+    SHOW_ALL_THRESHOLD,
+} from "../components/Diagram";
 
 export function generateEngine(): DiagramEngine {
     const engine = createEngine({
@@ -246,10 +253,14 @@ export function getNodeBoundingBox(node: NodeModel): BoundingBox {
  * function-row link cut through an unrelated node sitting below where the node's center
  * happened to be.
  *
- * `GraphQLServiceWidget` groups functions under collapsible per-group headers whose layout
- * depends on live UI state (which groups are open) that this layout pass has no access to, so
- * GraphQL function/group ports still fall back to the node-center approximation - a known,
- * narrower gap than the one this function fixes.
+ * `GraphQLServiceWidget` groups functions under collapsible per-group headers, so a group's rows
+ * only have a fixed offset once you know which groups are open. `buildDiagramData` does know that
+ * (it's how `calculateGraphQLNodeHeight` sizes the node), but this function is reached from
+ * `autoDistribute(engine)`, which sees only the model - so GraphQL function/group ports fall back
+ * to the node-center approximation. That's a plumbing gap rather than an inherent limit: stamping
+ * each row's anchor onto its port while `buildDiagramData` lays the rows out would close it, and
+ * would also retire the row-index inference below. Known, and narrower than the gap this function
+ * fixes.
  */
 export function getPortAnchorY(node: NodeModel, port: PortModel | null | undefined): number {
     const box = getNodeBoundingBox(node);
@@ -302,40 +313,72 @@ export function getPortAnchorY(node: NodeModel, port: PortModel | null | undefin
 const CURVE_SAMPLES_PER_SEGMENT = 64;
 
 /**
- * Whether the segment `a`-`b` touches `box`, via Liang-Barsky parametric clipping: the segment
- * enters the box's X slab over `t` in `[txEnter, txExit]` and its Y slab over `[tyEnter, tyExit]`,
- * and intersects the box exactly when those two ranges overlap inside `[0, 1]`. A segment running
- * parallel to a slab (`delta === 0`) either lies within it for all `t` or misses it entirely.
+ * Whether the segment `a`-`b` touches `box`, via Liang-Barsky parametric clipping: the segment is
+ * inside the box's X slab over some range of `t`, inside its Y slab over another, and touches the
+ * box exactly when those ranges still overlap inside `[0, 1]` after both are applied. A segment
+ * running parallel to a slab (`delta === 0`) either lies within it for all `t` or misses entirely.
  */
 function segmentIntersectsBox(a: Point2D, b: Point2D, box: BoundingBox): boolean {
     let enter = 0;
     let exit = 1;
-    const slabs: Array<[number, number, number, number]> = [
-        [b.x - a.x, a.x, box.left, box.right],
-        [b.y - a.y, a.y, box.top, box.bottom],
-    ];
-    for (const [delta, origin, low, high] of slabs) {
+    const clipAxis = (delta: number, origin: number, low: number, high: number) => {
         if (delta === 0) {
-            if (origin < low || origin > high) {
-                return false;
-            }
-            continue;
+            return origin >= low && origin <= high;
         }
         const t1 = (low - origin) / delta;
         const t2 = (high - origin) / delta;
         enter = Math.max(enter, Math.min(t1, t2));
         exit = Math.min(exit, Math.max(t1, t2));
-        if (enter > exit) {
-            return false;
-        }
-    }
-    return true;
+        return enter <= exit;
+    };
+    return (
+        clipAxis(b.x - a.x, a.x, box.left, box.right) && clipAxis(b.y - a.y, a.y, box.top, box.bottom)
+    );
 }
 
-/** Whether the curve NodeLinkModel would draw through `points` passes through `box`. */
-function curveCrossesBox(points: Point2D[], box: BoundingBox): boolean {
-    const polyline = sampleBezierPath(points, CURVE_SAMPLES_PER_SEGMENT);
-    return polyline.some((point, index) => index > 0 && segmentIntersectsBox(polyline[index - 1], point, box));
+/**
+ * Whether a link's sampled curve (see `sampleBezierPath`) passes through `box`. Takes the sampled
+ * polyline rather than the curve's control points so one link can be tested against many boxes
+ * without re-sampling it for each.
+ */
+function polylineCrossesBox(polyline: Point2D[], box: BoundingBox): boolean {
+    return polyline.slice(1).some((point, index) => segmentIntersectsBox(polyline[index], point, box));
+}
+
+/** A link's two endpoint anchors, in draw order. */
+export interface LinkAnchors {
+    source: Point2D;
+    target: Point2D;
+}
+
+/**
+ * Where a link's two ends actually attach: out/function ports sit on their node's inner (facing)
+ * edge and in-ports on the target's, at the Y `getPortAnchorY` computes for that specific port.
+ *
+ * Returns null for a link that isn't routable geometry (either end missing, or both ends on the
+ * same node). Shared with the whole-diagram overlap checker (see `checkNoLinkCrossesAnyNode` in
+ * `test/linkOverlapChecker.ts`) so the check can't validate a curve different from the one this
+ * pass routes - under jsdom the model's own endpoint points sit at the origin, so the checker has
+ * to derive them the same way, and deriving them twice is how the two would drift apart.
+ */
+export function getLinkAnchors(link: NodeLinkModel): LinkAnchors | null {
+    const { sourceNode, targetNode } = link;
+    if (!sourceNode || !targetNode || sourceNode === targetNode) {
+        return null;
+    }
+    const sourceBox = getNodeBoundingBox(sourceNode);
+    const targetBox = getNodeBoundingBox(targetNode);
+    const sourceIsLeft = sourceBox.left <= targetBox.left;
+    return {
+        source: {
+            x: sourceIsLeft ? sourceBox.right : sourceBox.left,
+            y: getPortAnchorY(sourceNode, link.getSourcePort()),
+        },
+        target: {
+            x: sourceIsLeft ? targetBox.left : targetBox.right,
+            y: getPortAnchorY(targetNode, link.getTargetPort()),
+        },
+    };
 }
 
 /**
@@ -346,11 +389,10 @@ function curveCrossesBox(points: Point2D[], box: BoundingBox): boolean {
  * waypoints that route them through the nearest free vertical gap in the offending column
  * instead - above or below whichever node(s) are in the way - rather than through it.
  *
- * It is a general geometric check (it doesn't know or care that the "workflow" column is the one
- * usually in the way, so it keeps working if more columns are ever inserted between existing
- * ones), and it asks the question against the curve NodeLinkModel actually paints, by sampling
- * the very same bezier segments (see sampleBezierPath / getBezierSegments) rather than against
- * the straight chord between the link's endpoints.
+ * The check is purely geometric - it doesn't know or care that the "workflow" column is the one
+ * usually in the way - and it asks the question against the curve NodeLinkModel actually paints,
+ * by sampling the very same bezier segments (see sampleBezierPath / getBezierSegments) rather
+ * than against the straight chord between the link's endpoints.
  *
  * Testing the chord is what this pass used to do, and it is *not* a safe approximation: with a
  * horizontal tangent forced at both ends, a link deliberately bows away from its chord by up to
@@ -359,6 +401,17 @@ function curveCrossesBox(points: Point2D[], box: BoundingBox): boolean {
  * entered that node by 4.4px - visible as a link clipping the box's corner, with this pass
  * reporting nothing wrong. Sampling the real curve removes that whole class of near-miss by
  * construction, instead of trying to cover the bow with a bigger clearance margin.
+ *
+ * Two known limits, both deliberate at this size of diagram:
+ * - Every obstruction collapses into one `[columnLeft, columnRight]` hull, so the detour is shaped
+ *   for a single contiguous band of obstructions - today's only case, since exactly one column can
+ *   sit between two others. Two *disjoint* intervening columns would be routed as though the gap
+ *   between them were blocked too; handling those needs one bend pair per contiguous X-cluster,
+ *   which the N-point path builder already supports.
+ * - Lanes are chosen per link against the nodes only, so two links passing the same column can be
+ *   assigned the same lane Y and render collinear along it. Nothing is hidden (both still reach
+ *   their endpoints), and separating them means feeding already-assigned lanes back into the
+ *   blocked bands - a whole-diagram concern rather than a per-link one.
  */
 export function avoidLinkObstructions(engine: DiagramEngine) {
     const model = engine.getModel();
@@ -370,26 +423,17 @@ export function avoidLinkObstructions(engine: DiagramEngine) {
         // guard against being run more than once over the same link.
         link.removeMiddlePoints();
 
-        const sourceNode = link.sourceNode;
-        const targetNode = link.targetNode;
-        if (!sourceNode || !targetNode || sourceNode === targetNode) {
+        const anchors = getLinkAnchors(link);
+        if (!anchors) {
             return;
         }
 
-        const sourceBox = getNodeBoundingBox(sourceNode);
-        const targetBox = getNodeBoundingBox(targetNode);
-        const sourceAnchorY = getPortAnchorY(sourceNode, link.getSourcePort());
-        const targetAnchorY = getPortAnchorY(targetNode, link.getTargetPort());
-
-        // Out/function ports sit on their node's inner (facing) edge and in-ports on the target's,
-        // so a link spans horizontally from one box's edge to the other's. Which one is on the
-        // left is read off the layout rather than assumed, so this stays correct for a link ever
-        // drawn right-to-left.
-        const sourceIsLeft = sourceBox.left <= targetBox.left;
-        const leftBox = sourceIsLeft ? sourceBox : targetBox;
-        const rightBox = sourceIsLeft ? targetBox : sourceBox;
-        const anchorLeft = { x: leftBox.right, y: sourceIsLeft ? sourceAnchorY : targetAnchorY };
-        const anchorRight = { x: rightBox.left, y: sourceIsLeft ? targetAnchorY : sourceAnchorY };
+        // Left/right is read off the layout rather than assumed, so this stays correct for a link
+        // ever drawn right-to-left.
+        const [anchorLeft, anchorRight] =
+            anchors.source.x <= anchors.target.x
+                ? [anchors.source, anchors.target]
+                : [anchors.target, anchors.source];
         if (anchorRight.x <= anchorLeft.x) {
             return; // same or overlapping columns - no horizontal span for anything to sit in
         }
@@ -400,11 +444,14 @@ export function avoidLinkObstructions(engine: DiagramEngine) {
         // overlap rather than by "sits strictly between the two columns" is what makes the detour
         // construction below provably safe.
         const obstructions = allNodes
-            .filter((node) => node !== sourceNode && node !== targetNode)
+            .filter((node) => node !== link.sourceNode && node !== link.targetNode)
             .map(getNodeBoundingBox)
             .filter((box) => box.right > anchorLeft.x && box.left < anchorRight.x);
-        const straightCurve = [anchorLeft, anchorRight];
-        if (!obstructions.some((box) => curveCrossesBox(straightCurve, box))) {
+
+        // Sampled once and reused for every box below, and again for `naiveY` - it's the same
+        // curve throughout, and sampling is the expensive part of this pass.
+        const polyline = sampleBezierPath([anchorLeft, anchorRight], CURVE_SAMPLES_PER_SEGMENT);
+        if (!obstructions.some((box) => polylineCrossesBox(polyline, box))) {
             return;
         }
 
@@ -430,10 +477,9 @@ export function avoidLinkObstructions(engine: DiagramEngine) {
         // Where the link currently runs as it passes the obstructing column - the lane closest to
         // this is the one that disturbs the link's shape least.
         const columnCenterX = (columnLeft + columnRight) / 2;
-        const naiveY = sampleBezierPath(straightCurve, CURVE_SAMPLES_PER_SEGMENT)
-            .reduce((closest, point) =>
-                Math.abs(point.x - columnCenterX) < Math.abs(closest.x - columnCenterX) ? point : closest
-            ).y;
+        const naiveY = polyline.reduce((closest, point) =>
+            Math.abs(point.x - columnCenterX) < Math.abs(closest.x - columnCenterX) ? point : closest
+        ).y;
 
         // Every Y band the lane must stay out of: each obstruction's box inflated by the clearance
         // margin, with overlapping bands merged. Merging - rather than assuming the boxes are
@@ -441,27 +487,28 @@ export function avoidLinkObstructions(engine: DiagramEngine) {
         // *all* of them: two nodes sitting closer together than that (or overlapping outright, as
         // nodes in different columns caught by the span test may well do) collapse into a single
         // blocked band instead of leaving a phantom gap between them for the lane to land in.
-        const blockedBands = obstructions
+        const blockedBands: Array<{ top: number; bottom: number }> = [];
+        obstructions
             .map((box) => ({ top: box.top - LINK_DETOUR_MARGIN, bottom: box.bottom + LINK_DETOUR_MARGIN }))
             .sort((a, b) => a.top - b.top)
-            .reduce<Array<{ top: number; bottom: number }>>((bands, band) => {
-                const previous = bands[bands.length - 1];
+            .forEach((band) => {
+                const previous = blockedBands[blockedBands.length - 1];
                 if (previous && band.top <= previous.bottom) {
                     previous.bottom = Math.max(previous.bottom, band.bottom);
-                    return bands;
+                } else {
+                    blockedBands.push(band);
                 }
-                bands.push({ ...band });
-                return bands;
-            }, []);
+            });
 
-        // The free lanes between those bands: above the first, between each consecutive pair, and
-        // below the last. Merging leaves every interior lane with real room in it, and the two
-        // unbounded outer lanes mean there is always at least one candidate.
-        const lanes = [
-            { top: -Infinity, bottom: blockedBands[0].top },
-            ...blockedBands.slice(1).map((band, index) => ({ top: blockedBands[index].bottom, bottom: band.top })),
-            { top: blockedBands[blockedBands.length - 1].bottom, bottom: Infinity },
-        ];
+        // The free lanes between those bands. Merging leaves every interior lane with real room in
+        // it, and the unbounded lanes at each end mean there is always at least one candidate.
+        const lanes: Array<{ top: number; bottom: number }> = [];
+        let cursor = -Infinity;
+        blockedBands.forEach((band) => {
+            lanes.push({ top: cursor, bottom: band.top });
+            cursor = band.bottom;
+        });
+        lanes.push({ top: cursor, bottom: Infinity });
 
         // Pick whichever free lane requires the smallest detour from where the link runs now.
         let laneY = naiveY;
@@ -622,8 +669,8 @@ function createFunctionConnections(
  * Builds the full node/link graph for `project` - the same pipeline `Diagram.tsx` uses to feed
  * `drawDiagram`/`autoDistribute`, extracted as a pure, engine-independent function so it can be
  * driven directly by tests (see `checkNoLinkCrossesAnyNode` in `test/linkOverlapChecker.ts`)
- * without needing a React render. `Diagram.tsx`'s own `getDiagramData` is a thin wrapper around
- * this that supplies its own component state for `expandedNodes`/`graphQLGroupOpen`.
+ * without needing a React render. `Diagram.tsx` calls it with its own component state for
+ * `expandedNodes`/`graphQLGroupOpen`.
  */
 export function buildDiagramData(
     project: CDModel,
@@ -676,13 +723,13 @@ export function buildDiagramData(
             const { visible, hidden } = partitionGraphQLServiceFunctions(
                 service,
                 expandedNodes,
-                graphQLGroupOpen[service.uuid] ?? { Query: true, Subscription: false, Mutation: false }
+                graphQLGroupOpen[service.uuid] ?? DEFAULT_GQL_STATE
             );
             // Reusable function to create connections for a list of functions to a given port getter
             const nodeHeight = calculateGraphQLNodeHeight(
                 visible,
                 hidden,
-                graphQLGroupOpen[service.uuid] || { Query: true, Subscription: false, Mutation: false });
+                graphQLGroupOpen[service.uuid] ?? DEFAULT_GQL_STATE);
 
             node.height = nodeHeight;
             node.setPosition(0, startY);

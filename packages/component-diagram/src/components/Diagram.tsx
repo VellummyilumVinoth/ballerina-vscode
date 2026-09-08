@@ -62,6 +62,13 @@ export type GQLState = {
     Mutation: boolean;
 };
 
+/**
+ * Which GraphQL function groups a service shows expanded before the user touches anything.
+ * Treated as read-only - `handleToggleGraphQLGroup` replaces the state object rather than mutating
+ * it, so the same instance can safely back the fallback in `buildDiagramData`.
+ */
+export const DEFAULT_GQL_STATE: GQLState = { Query: true, Subscription: false, Mutation: false };
+
 export function Diagram(props: DiagramProps) {
     const {
         project,
@@ -102,7 +109,7 @@ export function Diagram(props: DiagramProps) {
             // Add new services that are not yet in the state
             graphqlServices.forEach((service) => {
                 if (!updatedState[service.uuid]) {
-                    updatedState[service.uuid] = { Query: true, Subscription: false, Mutation: false };
+                    updatedState[service.uuid] = { ...DEFAULT_GQL_STATE };
                 }
             });
 
@@ -146,7 +153,7 @@ export function Diagram(props: DiagramProps) {
 
     const handleToggleGraphQLGroup = (serviceUuid: string, group: "Query" | "Subscription" | "Mutation") => {
         setGraphQLGroupOpen(prev => {
-            const current = prev[serviceUuid] ?? { Query: true, Subscription: false, Mutation: false };
+            const current = prev[serviceUuid] ?? DEFAULT_GQL_STATE;
             const next = { ...current, [group]: !current[group] } as { Query: boolean; Subscription: boolean; Mutation: boolean };
             return { ...prev, [serviceUuid]: next };
         });

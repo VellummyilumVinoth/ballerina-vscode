@@ -22,23 +22,32 @@
  *
  * It drives the *production* pipeline end to end - `buildDiagramData` (the same graph
  * `Diagram.tsx` builds) -> `autoDistribute` (which positions every column and internally runs
- * `avoidLinkObstructions`) -> `NodeLinkModel.getSVGPath` (the real bezier path builder) - then
- * samples each link's actual rendered curve and tests every sample against every *other* node's
- * real bounding box. Nothing here re-implements layout or path math; the only thing this module
- * supplies is the endpoint geometry jsdom can't (see `resolveEndpointAnchors`).
+ * `avoidLinkObstructions`) -> the real bezier geometry every link is painted from - then samples
+ * each link's curve and tests it against every *other* node's real bounding box.
+ *
+ * Nothing here re-derives layout or path math: node boxes come from `getNodeBoundingBox`, endpoint
+ * anchors from the shared `getLinkAnchors`, and the curve from `sampleBezierPath` - the same
+ * function `avoidLinkObstructions` routes with, and (via `getBezierSegments`) the same geometry
+ * `getSVGPath` serializes. `assertPathMatchesGeometry` pins that last equivalence per link so the
+ * points sampled here are provably the ones the widget draws.
+ *
+ * What is deliberately *not* shared is the collision test. Production asks "does this curve touch
+ * the box at all" to decide whether to reroute; this file asks "how far inside the box does it
+ * get" with its own point-in-box math, so a passing suite means something independent of the
+ * predicate the pass makes its decision with.
  */
 
-import { DiagramEngine, DiagramModel } from "@projectstorm/react-diagrams";
+import { DiagramModel } from "@projectstorm/react-diagrams";
 import { CDModel } from "@wso2/ballerina-core";
 import {
     autoDistribute,
     buildDiagramData,
     BoundingBox,
     generateEngine,
+    getLinkAnchors,
     getNodeBoundingBox,
-    getPortAnchorY,
 } from "../utils/diagram";
-import { NodeLinkModel, Point2D } from "../components/NodeLink";
+import { buildBezierPath, NodeLinkModel, Point2D, sampleBezierPath } from "../components/NodeLink";
 import { NodeModel } from "../utils/types";
 import { EntryNodeModel } from "../components/nodes/EntryNode";
 import { ConnectionNodeModel } from "../components/nodes/ConnectionNode";
@@ -59,8 +68,8 @@ const SAMPLES_PER_SEGMENT = 200;
  */
 const CROSSING_TOLERANCE = 0.5;
 
-export interface LinkCrossing {
-    /** e.g. `entry "/f" [port get-f] -> connection "ftpClient"` */
+interface LinkCrossing {
+    /** e.g. `entry "/f" [get-f] -> connection "ftpClient" [in]` */
     link: string;
     /** the unrelated node the link's curve enters, e.g. `entry "workflow2" (workflow)` */
     node: string;
@@ -73,31 +82,18 @@ export interface LinkCrossing {
     linkPoints: Point2D[];
 }
 
-/** The laid-out diagram, exactly as the production pipeline produces it. */
-export interface LayoutResult {
-    engine: DiagramEngine;
-    nodes: NodeModel[];
-    links: NodeLinkModel[];
-}
-
 /**
  * Runs the production build + layout pipeline for `project`, with no React render involved:
  * `buildDiagramData` -> `DiagramModel` -> `autoDistribute` (which runs `avoidLinkObstructions`).
  *
- * `expandedNodes` is empty and `graphQLGroupOpen` uses the same defaults `Diagram.tsx` seeds its
- * state with (Query open, Subscription/Mutation collapsed), so this reproduces the layout a user
- * sees on first open - the state every reported overlap so far has been in.
+ * `expandedNodes` and `graphQLGroupOpen` are both empty, which reproduces the layout a user sees on
+ * first open - `buildDiagramData` falls back to `DEFAULT_GQL_STATE` per service exactly as
+ * `Diagram.tsx` seeds its own state with, and that first-open state is the one every overlap
+ * reported so far has been in.
  */
-export function layoutProject(project: CDModel): LayoutResult {
+function layoutProject(project: CDModel): { nodes: NodeModel[]; links: NodeLinkModel[] } {
     const engine = generateEngine();
-    const graphQLGroupOpen: Record<string, GQLState> = {};
-    project.services
-        ?.filter((service) => service.type === "graphql:Service")
-        .forEach((service) => {
-            graphQLGroupOpen[service.uuid] = { Query: true, Subscription: false, Mutation: false };
-        });
-
-    const { nodes, links } = buildDiagramData(project, new Set<string>(), graphQLGroupOpen);
+    const { nodes, links } = buildDiagramData(project, new Set<string>(), {} as Record<string, GQLState>);
 
     const model = new DiagramModel();
     model.addAll(...nodes, ...links);
@@ -105,121 +101,59 @@ export function layoutProject(project: CDModel): LayoutResult {
 
     autoDistribute(engine);
 
-    return { engine, nodes, links };
+    return { nodes, links };
 }
 
 /**
- * Where a link's two ends actually attach, which the model alone can't tell us here.
- *
- * In a browser each `NodePortWidget` reports its rendered position and react-diagrams moves the
- * link's first/last point onto it; under jsdom every element measures 0x0, so those points stay at
- * the origin. This reconstructs them from the layout instead, using the exact same rule
- * `avoidLinkObstructions` reasons with: out/function ports sit on the source box's inner edge,
- * in-ports on the target box's inner edge, at the Y `getPortAnchorY` computes for that specific
- * port (a function row's own Y, not the node's center).
- *
- * Left/right is derived from the boxes rather than assumed source-on-the-left, mirroring
- * `avoidLinkObstructions`, so the check stays correct if a link is ever drawn right-to-left.
+ * The full point list a link is drawn through: its two endpoint anchors (from the shared
+ * `getLinkAnchors`, since under jsdom every element measures 0x0 and the model's own endpoint
+ * points never leave the origin) plus every detour waypoint `avoidLinkObstructions` added in
+ * between - those the model *does* carry in canvas coordinates, the layout pass having set them
+ * directly.
  */
-function resolveEndpointAnchors(
-    link: NodeLinkModel
-): { source: Point2D; target: Point2D } | null {
-    const { sourceNode, targetNode } = link;
-    if (!sourceNode || !targetNode || sourceNode === targetNode) {
-        return null;
-    }
-
-    const sourceBox = getNodeBoundingBox(sourceNode);
-    const targetBox = getNodeBoundingBox(targetNode);
-    const sourceIsLeft = sourceBox.left <= targetBox.left;
-
-    return {
-        source: {
-            x: sourceIsLeft ? sourceBox.right : sourceBox.left,
-            y: getPortAnchorY(sourceNode, link.getSourcePort()),
-        },
-        target: {
-            x: sourceIsLeft ? targetBox.left : targetBox.right,
-            y: getPortAnchorY(targetNode, link.getTargetPort()),
-        },
-    };
-}
-
-/**
- * The full point list a link is drawn through: the two reconstructed endpoint anchors plus every
- * detour waypoint `avoidLinkObstructions` added in between (those the model *does* carry, in
- * canvas coordinates, since the layout pass sets them directly).
- */
-export function getLinkGeometry(link: NodeLinkModel): Point2D[] | null {
-    const anchors = resolveEndpointAnchors(link);
+function getLinkGeometry(link: NodeLinkModel): Point2D[] | null {
+    const anchors = getLinkAnchors(link);
     if (!anchors) {
         return null;
     }
     const waypoints = link
         .getPoints()
         .slice(1, -1)
-        .map((point) => point.getPosition())
-        .map(({ x, y }) => ({ x, y }));
+        .map((point) => {
+            const { x, y } = point.getPosition();
+            return { x, y };
+        });
     return [anchors.source, ...waypoints, anchors.target];
 }
 
 /**
- * Parses an SVG path of the shape `buildBezierPath` emits - `M x y` followed by one or more
- * `C c1x c1y c2x c2y x y` - into its cubic segments. Deliberately strict: anything else means the
- * path builder changed shape and this checker's sampling would no longer describe what's drawn, so
- * it throws rather than silently checking a subset of the curve.
+ * Asserts that the path the widget would render for `link` is the one built from `points`, by
+ * moving the link's endpoint points onto their anchors (what a browser's port measurements would
+ * have done) and comparing `getSVGPath()` against the same points serialized.
+ *
+ * This is what lets the sampling below use `points` directly instead of re-parsing the `d` string:
+ * it proves per link that the two describe the same curve, rather than assuming it.
  */
-function parseBezierPath(path: string): Array<[Point2D, Point2D, Point2D, Point2D]> {
-    const tokens = path.trim().split(/\s+/);
-    if (tokens[0] !== "M") {
-        throw new Error(`Unsupported link path (expected a leading "M"): ${path}`);
-    }
-    let cursor: Point2D = { x: Number(tokens[1]), y: Number(tokens[2]) };
-    const segments: Array<[Point2D, Point2D, Point2D, Point2D]> = [];
-    let index = 3;
-    while (index < tokens.length) {
-        if (tokens[index] !== "C") {
-            throw new Error(`Unsupported link path command "${tokens[index]}" in: ${path}`);
-        }
-        const numbers = tokens.slice(index + 1, index + 7).map(Number);
-        if (numbers.length < 6 || numbers.some(Number.isNaN)) {
-            throw new Error(`Malformed cubic segment in link path: ${path}`);
-        }
-        const control1 = { x: numbers[0], y: numbers[1] };
-        const control2 = { x: numbers[2], y: numbers[3] };
-        const end = { x: numbers[4], y: numbers[5] };
-        segments.push([cursor, control1, control2, end]);
-        cursor = end;
-        index += 7;
-    }
-    if (segments.length === 0) {
-        throw new Error(`Link path has no drawable segments: ${path}`);
-    }
-    return segments;
-}
+function assertPathMatchesGeometry(link: NodeLinkModel, points: Point2D[]): void {
+    const linkPoints = link.getPoints();
+    linkPoints[0].setPosition(points[0].x, points[0].y);
+    linkPoints[linkPoints.length - 1].setPosition(points[points.length - 1].x, points[points.length - 1].y);
 
-function cubicAt(segment: [Point2D, Point2D, Point2D, Point2D], t: number): Point2D {
-    const [p0, p1, p2, p3] = segment;
-    const u = 1 - t;
-    const a = u * u * u;
-    const b = 3 * u * u * t;
-    const c = 3 * u * t * t;
-    const d = t * t * t;
-    return {
-        x: a * p0.x + b * p1.x + c * p2.x + d * p3.x,
-        y: a * p0.y + b * p1.y + c * p2.y + d * p3.y,
-    };
+    const rendered = link.getSVGPath();
+    const expected = buildBezierPath(points);
+    if (rendered !== expected) {
+        throw new Error(
+            `Link's rendered path does not match its geometry.\n  rendered: ${rendered}\n  expected: ${expected}`
+        );
+    }
 }
 
 /** How far inside `box` a point lies (0 when on or outside the boundary). */
 function penetrationDepth(point: Point2D, box: BoundingBox): number {
-    const depth = Math.min(
-        point.x - box.left,
-        box.right - point.x,
-        point.y - box.top,
-        box.bottom - point.y
+    return Math.max(
+        0,
+        Math.min(point.x - box.left, box.right - point.x, point.y - box.top, box.bottom - point.y)
     );
-    return depth > 0 ? depth : 0;
 }
 
 function describeNode(node: NodeModel): string {
@@ -249,12 +183,8 @@ function describeLink(link: NodeLinkModel): string {
 /**
  * Samples every link's rendered curve against every node that isn't one of its own endpoints, and
  * returns the deepest crossing found per (link, node) pair, worst first.
- *
- * The curve is obtained by moving the link's endpoint points onto their reconstructed anchors and
- * then calling the real `NodeLinkModel.getSVGPath()` - i.e. exactly the `d` attribute the widget
- * renders, not a re-derivation of it.
  */
-export function findLinkNodeCrossings(project: CDModel): LinkCrossing[] {
+function findLinkNodeCrossings(project: CDModel): LinkCrossing[] {
     const { nodes, links } = layoutProject(project);
     const boxes = new Map<NodeModel, BoundingBox>(nodes.map((node) => [node, getNodeBoundingBox(node)]));
     const crossings: LinkCrossing[] = [];
@@ -264,32 +194,20 @@ export function findLinkNodeCrossings(project: CDModel): LinkCrossing[] {
         if (!points) {
             return;
         }
+        assertPathMatchesGeometry(link, points);
+        const samples = sampleBezierPath(points, SAMPLES_PER_SEGMENT);
 
-        // Put the endpoints where they really render, so getSVGPath() produces the production path.
-        const linkPoints = link.getPoints();
-        linkPoints[0].setPosition(points[0].x, points[0].y);
-        linkPoints[linkPoints.length - 1].setPosition(
-            points[points.length - 1].x,
-            points[points.length - 1].y
-        );
-
-        const segments = parseBezierPath(link.getSVGPath());
-
-        nodes.forEach((node) => {
+        boxes.forEach((box, node) => {
             if (node === link.sourceNode || node === link.targetNode) {
                 return;
             }
-            const box = boxes.get(node);
             let worstDepth = 0;
             let worstPoint: Point2D = { x: 0, y: 0 };
-            segments.forEach((segment) => {
-                for (let step = 0; step <= SAMPLES_PER_SEGMENT; step++) {
-                    const sample = cubicAt(segment, step / SAMPLES_PER_SEGMENT);
-                    const depth = penetrationDepth(sample, box);
-                    if (depth > worstDepth) {
-                        worstDepth = depth;
-                        worstPoint = sample;
-                    }
+            samples.forEach((sample) => {
+                const depth = penetrationDepth(sample, box);
+                if (depth > worstDepth) {
+                    worstDepth = depth;
+                    worstPoint = sample;
                 }
             });
             if (worstDepth > CROSSING_TOLERANCE) {
@@ -311,7 +229,7 @@ export function findLinkNodeCrossings(project: CDModel): LinkCrossing[] {
 const round = (value: number) => Math.round(value * 100) / 100;
 
 /** Renders crossings as a readable report - used as the assertion message below. */
-export function formatCrossings(crossings: LinkCrossing[]): string {
+function formatCrossings(crossings: LinkCrossing[]): string {
     return crossings
         .map((crossing) => {
             const box = crossing.nodeBox;
