@@ -562,15 +562,34 @@ exports[`Component Diagram - Snapshot Tests renders ai agent complex correctly: 
                   </vscode-button>
                 </div>
               </div>
+              <div
+                class="css-20"
+              >
+                <div
+                  class="css-27"
+                >
+                  <div
+                    class="css-29"
+                    color="#49cc90"
+                  >
+                    post
+                  </div>
+                  <div
+                    class="css-25"
+                  >
+                    /chat
+                  </div>
+                </div>
+                <div
+                  class="port "
+                  data-name="post-chat"
+                />
+              </div>
             </div>
             <div />
             <div
               class="port css-19"
               data-name="out"
-            />
-            <div
-              class="port css-19"
-              data-name="post-chat"
             />
           </div>
         </div>
@@ -1694,7 +1713,7 @@ exports[`Component Diagram - Snapshot Tests renders graphql complex correctly: g
 .css-18 {display: flex; height: fit-content; width: fit-content;}
 .css-12 svg {fill: var(--vscode-foreground);}
 .css-12 {width: 24px; height: 24px; font-size: 24px;}
-.css-29 {font-size: 12px; text-transform: uppercase; font-family: "GilmerBold"; background-color: #3d7eff; color: #FFF; padding: 4px 8px; border-radius: 4px; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; min-width: 60px; text-align: center; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; font-weight: bold;}
+.css-30 {font-size: 12px; text-transform: uppercase; font-family: "GilmerBold"; background-color: #3d7eff; color: #FFF; padding: 4px 8px; border-radius: 4px; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; min-width: 60px; text-align: center; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; font-weight: bold;}
 .css-41::part(indeterminate-indicator-1) {stroke: var(--vscode-contrastBorder, var(--vscode-button-background));}
 .css-16 {font-size: 12px; max-width: 136px; overflow: hidden; text-overflow: ellipsis; font-family: monospace; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; color: var(--vscode-foreground); opacity: 0.7;}
 .css-25 {font-size: 14px; max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: "GilmerMedium"; color: var(--vscode-foreground); opacity: 1;}
@@ -1711,7 +1730,9 @@ exports[`Component Diagram - Snapshot Tests renders graphql complex correctly: g
 .css-17 {border-radius: 5px;}
 .css-22 {display: flex; -webkit-flex-direction: row; -ms-flex-direction: row; flex-direction: row; -webkit-box-pack: start; -ms-flex-pack: start; -webkit-justify-content: flex-start; justify-content: flex-start; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; gap: 10px; width: 240px; height: 56px; cursor: pointer;}
 .css-22:hover {background-color: var(--vscode-sideBar-background); border-radius: 8px;}
-.css-30 {font-size: 12px; text-transform: uppercase; font-family: "GilmerBold"; background-color: #49cc90; color: #FFF; padding: 4px 8px; border-radius: 4px; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; min-width: 60px; text-align: center; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; font-weight: bold;}
+.css-28 {font-size: 12px; text-transform: uppercase; font-family: "GilmerBold"; background-color: #49cc90; color: #FFF; padding: 4px 8px; border-radius: 4px; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; min-width: 60px; text-align: center; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; font-weight: bold;}
+.css-27 {display: flex; -webkit-flex-direction: row; -ms-flex-direction: row; flex-direction: row; -webkit-box-pack: start; -ms-flex-pack: start; -webkit-justify-content: flex-start; justify-content: flex-start; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; gap: 10px; width: 240px; height: 40px; cursor: pointer; padding: 0 12px; border: 1.5px solid var(--vscode-dropdown-border); border-radius: 8px; background-color: var(--vscode-menu-background);}
+.css-27:hover {background-color: var(--vscode-sideBar-background); border-radius: 8px;}
 .css-7 {position: absolute; -webkit-touch-callout: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; cursor: move; pointer-events: all;}
 .css-15 {font-size: 14px; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: "GilmerMedium"; color: var(--vscode-foreground); opacity: 1;}
 .css-13 {height: 16px; width: 14px; cursor: pointer;}
@@ -1720,7 +1741,7 @@ exports[`Component Diagram - Snapshot Tests renders graphql complex correctly: g
 .css-0 {display: flex; -webkit-flex-direction: column; -ms-flex-direction: column; flex-direction: column; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; gap: 8px; position: absolute; left: 12px; bottom: 12px; z-index: 1000;}
 .css-10 {display: flex; -webkit-flex-direction: row; -ms-flex-direction: row; flex-direction: row; -webkit-box-pack: start; -ms-flex-pack: start; -webkit-justify-content: flex-start; justify-content: flex-start; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; gap: 12px; width: 100%; cursor: pointer;}
 .css-11 {display: flex; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; width: 64px; height: 64px; border: 1.5px solid color-mix(in srgb, var(--vscode-foreground) 70%, transparent); border-radius: 50%; background-color: var(--vscode-menu-background); color: var(--vscode-foreground); aspect-ratio: 1/1;}
-.css-27 {height: 16px; width: 14px; cursor: pointer; color: #e535ab;}
+.css-29 {height: 16px; width: 14px; cursor: pointer; color: #e535ab;}
 
 /* DOM */
 <div>
@@ -2148,15 +2169,34 @@ exports[`Component Diagram - Snapshot Tests renders graphql complex correctly: g
                   </vscode-button>
                 </div>
               </div>
+              <div
+                class="css-20"
+              >
+                <div
+                  class="css-27"
+                >
+                  <div
+                    class="css-28"
+                    color="#49cc90"
+                  >
+                    post
+                  </div>
+                  <div
+                    class="css-25"
+                  >
+                    /chat
+                  </div>
+                </div>
+                <div
+                  class="port "
+                  data-name="post-chat"
+                />
+              </div>
             </div>
             <div />
             <div
               class="port css-19"
               data-name="out"
-            />
-            <div
-              class="port css-19"
-              data-name="post-chat"
             />
           </div>
         </div>
@@ -2181,7 +2221,7 @@ exports[`Component Diagram - Snapshot Tests renders graphql complex correctly: g
                   class="css-23"
                 >
                   <div
-                    class="css-27"
+                    class="css-29"
                   >
                     <i
                       class="fw-bi-graphql"
@@ -2299,10 +2339,10 @@ exports[`Component Diagram - Snapshot Tests renders graphql complex correctly: g
                 class="css-20"
               >
                 <div
-                  class="css-28"
+                  class="css-27"
                 >
                   <div
-                    class="css-29"
+                    class="css-30"
                     color="#3d7eff"
                   >
                     get
@@ -2322,10 +2362,10 @@ exports[`Component Diagram - Snapshot Tests renders graphql complex correctly: g
                 class="css-20"
               >
                 <div
-                  class="css-28"
+                  class="css-27"
                 >
                   <div
-                    class="css-30"
+                    class="css-28"
                     color="#49cc90"
                   >
                     post
@@ -2732,7 +2772,7 @@ exports[`Component Diagram - Snapshot Tests renders multiple connections complex
 .css-18 {display: flex; height: fit-content; width: fit-content;}
 .css-12 svg {fill: var(--vscode-foreground);}
 .css-12 {width: 24px; height: 24px; font-size: 24px;}
-.css-29 {font-size: 12px; text-transform: uppercase; font-family: "GilmerBold"; background-color: #3d7eff; color: #FFF; padding: 4px 8px; border-radius: 4px; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; min-width: 60px; text-align: center; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; font-weight: bold;}
+.css-30 {font-size: 12px; text-transform: uppercase; font-family: "GilmerBold"; background-color: #3d7eff; color: #FFF; padding: 4px 8px; border-radius: 4px; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; min-width: 60px; text-align: center; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; font-weight: bold;}
 .css-41::part(indeterminate-indicator-1) {stroke: var(--vscode-contrastBorder, var(--vscode-button-background));}
 .css-16 {font-size: 12px; max-width: 136px; overflow: hidden; text-overflow: ellipsis; font-family: monospace; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; color: var(--vscode-foreground); opacity: 0.7;}
 .css-25 {font-size: 14px; max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: "GilmerMedium"; color: var(--vscode-foreground); opacity: 1;}
@@ -2749,7 +2789,9 @@ exports[`Component Diagram - Snapshot Tests renders multiple connections complex
 .css-17 {border-radius: 5px;}
 .css-22 {display: flex; -webkit-flex-direction: row; -ms-flex-direction: row; flex-direction: row; -webkit-box-pack: start; -ms-flex-pack: start; -webkit-justify-content: flex-start; justify-content: flex-start; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; gap: 10px; width: 240px; height: 56px; cursor: pointer;}
 .css-22:hover {background-color: var(--vscode-sideBar-background); border-radius: 8px;}
-.css-30 {font-size: 12px; text-transform: uppercase; font-family: "GilmerBold"; background-color: #49cc90; color: #FFF; padding: 4px 8px; border-radius: 4px; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; min-width: 60px; text-align: center; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; font-weight: bold;}
+.css-28 {font-size: 12px; text-transform: uppercase; font-family: "GilmerBold"; background-color: #49cc90; color: #FFF; padding: 4px 8px; border-radius: 4px; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; min-width: 60px; text-align: center; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; font-weight: bold;}
+.css-27 {display: flex; -webkit-flex-direction: row; -ms-flex-direction: row; flex-direction: row; -webkit-box-pack: start; -ms-flex-pack: start; -webkit-justify-content: flex-start; justify-content: flex-start; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; gap: 10px; width: 240px; height: 40px; cursor: pointer; padding: 0 12px; border: 1.5px solid var(--vscode-dropdown-border); border-radius: 8px; background-color: var(--vscode-menu-background);}
+.css-27:hover {background-color: var(--vscode-sideBar-background); border-radius: 8px;}
 .css-7 {position: absolute; -webkit-touch-callout: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; cursor: move; pointer-events: all;}
 .css-15 {font-size: 14px; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: "GilmerMedium"; color: var(--vscode-foreground); opacity: 1;}
 .css-13 {height: 16px; width: 14px; cursor: pointer;}
@@ -2758,7 +2800,7 @@ exports[`Component Diagram - Snapshot Tests renders multiple connections complex
 .css-0 {display: flex; -webkit-flex-direction: column; -ms-flex-direction: column; flex-direction: column; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; gap: 8px; position: absolute; left: 12px; bottom: 12px; z-index: 1000;}
 .css-10 {display: flex; -webkit-flex-direction: row; -ms-flex-direction: row; flex-direction: row; -webkit-box-pack: start; -ms-flex-pack: start; -webkit-justify-content: flex-start; justify-content: flex-start; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; gap: 12px; width: 100%; cursor: pointer;}
 .css-11 {display: flex; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; width: 64px; height: 64px; border: 1.5px solid color-mix(in srgb, var(--vscode-foreground) 70%, transparent); border-radius: 50%; background-color: var(--vscode-menu-background); color: var(--vscode-foreground); aspect-ratio: 1/1;}
-.css-27 {height: 16px; width: 14px; cursor: pointer; color: #e535ab;}
+.css-29 {height: 16px; width: 14px; cursor: pointer; color: #e535ab;}
 
 /* DOM */
 <div>
@@ -3186,15 +3228,34 @@ exports[`Component Diagram - Snapshot Tests renders multiple connections complex
                   </vscode-button>
                 </div>
               </div>
+              <div
+                class="css-20"
+              >
+                <div
+                  class="css-27"
+                >
+                  <div
+                    class="css-28"
+                    color="#49cc90"
+                  >
+                    post
+                  </div>
+                  <div
+                    class="css-25"
+                  >
+                    /chat
+                  </div>
+                </div>
+                <div
+                  class="port "
+                  data-name="post-chat"
+                />
+              </div>
             </div>
             <div />
             <div
               class="port css-19"
               data-name="out"
-            />
-            <div
-              class="port css-19"
-              data-name="post-chat"
             />
           </div>
         </div>
@@ -3219,7 +3280,7 @@ exports[`Component Diagram - Snapshot Tests renders multiple connections complex
                   class="css-23"
                 >
                   <div
-                    class="css-27"
+                    class="css-29"
                   >
                     <i
                       class="fw-bi-graphql"
@@ -3337,10 +3398,10 @@ exports[`Component Diagram - Snapshot Tests renders multiple connections complex
                 class="css-20"
               >
                 <div
-                  class="css-28"
+                  class="css-27"
                 >
                   <div
-                    class="css-29"
+                    class="css-30"
                     color="#3d7eff"
                   >
                     get
@@ -3360,10 +3421,10 @@ exports[`Component Diagram - Snapshot Tests renders multiple connections complex
                 class="css-20"
               >
                 <div
-                  class="css-28"
+                  class="css-27"
                 >
                   <div
-                    class="css-30"
+                    class="css-28"
                     color="#49cc90"
                   >
                     post
