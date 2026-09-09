@@ -1115,11 +1115,13 @@ export const calculateEntryNodeHeight = (numFunctions: number, isExpanded: boole
         return ENTRY_HEADER_HEIGHT + numFunctions * ENTRY_ROW_HEIGHT + ROW_PADDING + ENTRY_VIEW_ALL_BUTTON_HEIGHT;
     }
 
-    if (numFunctions <= 2) {
+    // Matches GeneralWidget's own visibleFunctions/hasMoreFunctions split: at or under the
+    // threshold every row shows with no button, same shape as the isExpanded case above.
+    if (numFunctions <= SHOW_ALL_THRESHOLD) {
         return ENTRY_HEADER_HEIGHT + numFunctions * ENTRY_ROW_HEIGHT + ROW_PADDING;
     }
 
-    return ENTRY_HEADER_HEIGHT + 2 * ENTRY_ROW_HEIGHT + ROW_PADDING + ENTRY_VIEW_ALL_BUTTON_HEIGHT;
+    return ENTRY_HEADER_HEIGHT + PREVIEW_COUNT * ENTRY_ROW_HEIGHT + ROW_PADDING + ENTRY_VIEW_ALL_BUTTON_HEIGHT;
 };
 
 /**

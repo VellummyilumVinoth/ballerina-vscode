@@ -26,6 +26,7 @@ import {
     createNodesLink,
     createPortNodeLink,
     generateEngine,
+    getNodeBoundingBox,
     getPortAnchorY,
     LINK_DETOUR_MARGIN,
 } from "../utils/diagram";
@@ -267,6 +268,26 @@ describe("avoidLinkObstructions", () => {
         const clearsShort = laneY <= 150 - LINK_DETOUR_MARGIN || laneY >= 222 + LINK_DETOUR_MARGIN;
         expect(clearsTall).toBe(true);
         expect(clearsShort).toBe(true);
+    });
+});
+
+describe("calculateEntryNodeHeight", () => {
+    test.each([
+        [1, 128],
+        [2, 176],
+        [3, 224], // regression: was 216 (took the preview+button branch meant for > SHOW_ALL_THRESHOLD)
+        [4, 216],
+    ])("collapsed with %i function(s) is %ipx", (numFunctions, expectedHeight) => {
+        expect(calculateEntryNodeHeight(numFunctions, false)).toBe(expectedHeight);
+    });
+
+    test("a 3-function service's bounding box matches its real rendered height, not the old undercount", () => {
+        const funcs = [makeResourceFunction("get", "a"), makeResourceFunction("get", "b"), makeResourceFunction("get", "c")];
+        const serviceNode = new EntryNodeModel(makeService("service-1", funcs), "service");
+        serviceNode.height = calculateEntryNodeHeight(3, false);
+        serviceNode.setPosition(0, 0);
+
+        expect(getNodeBoundingBox(serviceNode).bottom).toBe(224);
     });
 });
 
