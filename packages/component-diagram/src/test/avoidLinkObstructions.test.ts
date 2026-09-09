@@ -17,9 +17,10 @@
  */
 
 import { DiagramModel } from "@projectstorm/react-diagrams";
-import { CDAutomation, CDConnection, CDLocation, CDResourceFunction, CDService, CDWorkflow } from "@wso2/ballerina-core";
+import { CDAutomation, CDConnection, CDFunction, CDLocation, CDModel, CDResourceFunction, CDService, CDWorkflow } from "@wso2/ballerina-core";
 import {
     avoidLinkObstructions,
+    buildDiagramData,
     calculateEntryNodeHeight,
     calculateWorkflowNodeHeight,
     createNodesLink,
@@ -31,7 +32,8 @@ import {
 import { EntryNodeModel } from "../components/nodes/EntryNode";
 import { ConnectionNodeModel } from "../components/nodes/ConnectionNode";
 import { NodeLinkModel } from "../components/NodeLink";
-import { ENTRY_NODE_WIDTH, NODE_GAP_X } from "../resources/constants";
+import { CON_NODE_HEIGHT, ENTRY_NODE_WIDTH, NODE_GAP_X } from "../resources/constants";
+import { GQLState } from "../components/Diagram";
 
 // Reproduces PR #689's 4-column layout (listener | entry | workflow | connection): the entry
 // and workflow columns are adjacent, so a fixed gap of NODE_GAP_X puts the connection column far
@@ -87,6 +89,42 @@ function makeService(uuid: string, resourceFunctions: CDResourceFunction[], type
         enableFlowModel: true,
         sortText: "",
     };
+}
+
+function makeRemoteFunction(name: string): CDFunction {
+    return { name, location: emptyLocation, connections: [] };
+}
+
+/** A `graphql:Service` fixture, grouped by accessor exactly as `getGraphQLGroupLabel` does. */
+function makeGraphQLService(
+    uuid: string,
+    groups: { queries?: CDResourceFunction[]; mutations?: CDFunction[]; subscriptions?: CDResourceFunction[] }
+): CDService {
+    return {
+        location: emptyLocation,
+        attachedListeners: [],
+        connections: [],
+        functions: [],
+        remoteFunctions: groups.mutations ?? [],
+        resourceFunctions: [...(groups.queries ?? []), ...(groups.subscriptions ?? [])],
+        absolutePath: "",
+        type: "graphql:Service",
+        icon: "",
+        uuid,
+        enableFlowModel: true,
+        sortText: "",
+    };
+}
+
+function makeProject(service: CDService): CDModel {
+    return { connections: [], listeners: [], services: [service], workflows: [] };
+}
+
+/** Builds a GraphQL node the same way `Diagram.tsx` does, at first-open state (see
+ * `DEFAULT_GQL_STATE`: Query open, Mutation/Subscription collapsed) unless overridden. */
+function buildGraphQLNode(service: CDService, graphQLGroupOpen: Record<string, GQLState> = {}): EntryNodeModel {
+    const { nodes } = buildDiagramData(makeProject(service), new Set<string>(), graphQLGroupOpen);
+    return nodes[0] as EntryNodeModel;
 }
 
 /** Builds a link between two nodes on a fresh engine/model and runs the pass under test. */
@@ -268,14 +306,35 @@ describe("getPortAnchorY", () => {
         expect(getPortAnchorY(workflowNode, eventPort)).toBe(96); // same row math as a function port
     });
 
-    test("falls back to the node center for ports it can't statically place (e.g. GraphQL)", () => {
-        const func = makeResourceFunction("get", "f");
-        const gqlNode = new EntryNodeModel(makeService("gql-1", [func], "graphql:Service"), "service");
-        gqlNode.height = 200;
-        gqlNode.setPosition(0, 0); // center: 100
+    test("anchors GraphQL function-row and group-header ports at their real row Y, not the node's center", () => {
+        // Query open (2 visible functions) with Mutation/Subscription collapsed - the reviewer's
+        // example shape, and `DEFAULT_GQL_STATE`'s own first-open state.
+        const q1 = makeResourceFunction("get", "q1");
+        const q2 = makeResourceFunction("get", "q2");
+        const service = makeGraphQLService("gql-1", {
+            queries: [q1, q2],
+            mutations: [makeRemoteFunction("m1")],
+            subscriptions: [makeResourceFunction("subscribe", "s1")],
+        });
 
-        const functionPort = gqlNode.getFunctionPort(func);
-        expect(getPortAnchorY(gqlNode, functionPort)).toBe(100);
+        const gqlNode = buildGraphQLNode(service);
+        gqlNode.setPosition(0, 0); // box top: 0
+
+        expect(gqlNode.height).toBe(359); // service header (80) + Query section (61 + 2*48)
+        const center = gqlNode.height / 2; // 179.5
+
+        // Query's header (61) then each 48px-tall row, centered in its own row.
+        expect(getPortAnchorY(gqlNode, gqlNode.getFunctionPort(q1))).toBe(165); // 80 + 61 + 24
+        expect(getPortAnchorY(gqlNode, gqlNode.getFunctionPort(q2))).toBe(213); // 80 + 61 + 48 + 24
+
+        // Mutation/Subscription are collapsed by default, so each anchors at its own header row -
+        // one row apart, and neither at the node's center.
+        const mutationAnchor = getPortAnchorY(gqlNode, gqlNode.getGraphQLGroupPort("Mutation"));
+        const subscriptionAnchor = getPortAnchorY(gqlNode, gqlNode.getGraphQLGroupPort("Subscription"));
+        expect(mutationAnchor).toBe(267.5); // 80 + 61 + 96 + 61/2
+        expect(subscriptionAnchor).toBe(328.5); // mutationAnchor's section end (298) + 61/2
+
+        [165, 213, 267.5, 328.5].forEach((anchor) => expect(anchor).not.toBe(center));
     });
 });
 
@@ -317,6 +376,52 @@ describe("avoidLinkObstructions with a real function port (createPortNodeLink)",
         expect(points).toHaveLength(4);
         const laneY = points[1].getPosition().y;
         const clearsWorkflow = laneY <= 88 - LINK_DETOUR_MARGIN || laneY >= 104 + LINK_DETOUR_MARGIN;
+        expect(clearsWorkflow).toBe(true);
+    });
+
+    test("routes a GraphQL query link around a workflow node the node-center approximation would have missed", () => {
+        // Same escalation shape as the plain-service test above, but for GraphQL: several visible
+        // queries plus collapsed Mutation/Subscription groups (see the getPortAnchorY test above -
+        // this exact fixture anchors q2's row at Y=213, well below the node's center at Y=179.5).
+        // The old center-based check drew the obstruction test against a Y the link never actually
+        // ran through, so it never saw this crossing.
+        const q1 = makeResourceFunction("get", "q1");
+        const q2 = makeResourceFunction("get", "q2");
+        const service = makeGraphQLService("gql-1", {
+            queries: [q1, q2],
+            mutations: [makeRemoteFunction("m1")],
+            subscriptions: [makeResourceFunction("subscribe", "s1")],
+        });
+
+        const gqlNode = buildGraphQLNode(service);
+        gqlNode.setPosition(ENTRY_X, 0); // box: [0, 359], center: 179.5, q2's row: 213
+
+        const connectionNode = new ConnectionNodeModel(makeConnection("connection-1"));
+        connectionNode.setPosition(CONNECTION_X, 213 - CON_NODE_HEIGHT / 2); // center: 213, matches q2's row
+
+        // Deliberately thin and narrow, and placed against the near (source-side) edge of the
+        // workflow column. The TRUE curve leaves the GraphQL node flat at Y=213 (source row and
+        // target center both 213), so it crosses this box at every X. The old center-based curve
+        // leaves at Y=179.5 and only eases up towards 213 near the target end - by the time it
+        // reaches this box's X range (the first 40px of the column) it's still only around Y=187,
+        // well clear of [205, 221] - which is exactly how the old check missed this crossing.
+        const workflowNode = new EntryNodeModel(makeWorkflow("workflow-1"), "workflow");
+        workflowNode.width = 40;
+        workflowNode.height = 16;
+        workflowNode.setPosition(WORKFLOW_X, 205); // box: [400, 440] x [205, 221]
+
+        const q2Port = gqlNode.getFunctionPort(q2);
+        const link = createPortNodeLink(gqlNode, q2Port, connectionNode) as NodeLinkModel;
+        expect(link.getPoints()).toHaveLength(2);
+        expect(link.sourceNode).toBe(gqlNode);
+        expect(link.targetNode).toBe(connectionNode);
+
+        runObstructionPass([gqlNode, workflowNode, connectionNode], link);
+
+        const points = link.getPoints();
+        expect(points).toHaveLength(4);
+        const laneY = points[1].getPosition().y;
+        const clearsWorkflow = laneY <= 205 - LINK_DETOUR_MARGIN || laneY >= 221 + LINK_DETOUR_MARGIN;
         expect(clearsWorkflow).toBe(true);
     });
 

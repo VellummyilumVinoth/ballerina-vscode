@@ -252,13 +252,11 @@ export function getNodeBoundingBox(node: NodeModel): BoundingBox {
  * cut through an unrelated node sitting below where the node's center happened to be.
  *
  * `GraphQLServiceWidget` groups functions under collapsible per-group headers, so a group's rows
- * only have a fixed offset once you know which groups are open. `buildDiagramData` does know that
- * (it's how `calculateGraphQLNodeHeight` sizes the node), but this function is reached from
- * `autoDistribute(engine)`, which sees only the model - so GraphQL function/group ports fall back
- * to the node-center approximation. That's a plumbing gap rather than an inherent limit: stamping
- * each row's anchor onto its port while `buildDiagramData` lays the rows out would close it, and
- * would also retire the row-index inference below. Known, and narrower than the gap this function
- * fixes.
+ * only have a fixed offset once you know which groups are open - information this function, reached
+ * from `autoDistribute(engine)` with only the model in hand, doesn't have. `buildDiagramData` does
+ * (it's how `calculateGraphQLNodeHeight` sizes the node), so it stamps each GraphQL function/group
+ * port's row offset onto the port itself (`NodePortModel.rowOffsetY`, via
+ * `computeGraphQLPortOffsets`) once it lays the rows out; this function just reads that back.
  */
 export function getPortAnchorY(node: NodeModel, port: PortModel | null | undefined): number {
     const box = getNodeBoundingBox(node);
@@ -282,7 +280,8 @@ export function getPortAnchorY(node: NodeModel, port: PortModel | null | undefin
 
     const service = node.node as CDService;
     if (service?.type === "graphql:Service") {
-        return center;
+        const offset = (port as NodePortModel).rowOffsetY;
+        return offset === undefined ? center : box.top + offset;
     }
 
     if (port === node.getViewAllResourcesPort()) {
@@ -737,21 +736,31 @@ export function buildDiagramData(
 
         const isGraphQL = service.type === "graphql:Service";
         if (isGraphQL) {
-            const { visible, hidden } = partitionGraphQLServiceFunctions(
-                service,
-                expandedNodes,
-                graphQLGroupOpen[service.uuid] ?? DEFAULT_GQL_STATE
-            );
+            const resolvedGroupOpen = graphQLGroupOpen[service.uuid] ?? DEFAULT_GQL_STATE;
+            const { visible, hidden } = partitionGraphQLServiceFunctions(service, expandedNodes, resolvedGroupOpen);
             // Reusable function to create connections for a list of functions to a given port getter
-            const nodeHeight = calculateGraphQLNodeHeight(
-                visible,
-                hidden,
-                graphQLGroupOpen[service.uuid] ?? DEFAULT_GQL_STATE);
+            const nodeHeight = calculateGraphQLNodeHeight(visible, hidden, resolvedGroupOpen);
 
             node.height = nodeHeight;
             node.setPosition(0, startY);
             nodes.push(node);
             startY += nodeHeight + 16;
+
+            // Stamp each visible row/group header's real Y offset onto its port so getPortAnchorY
+            // can route links from it correctly instead of approximating with the node's center.
+            const { functionOffsets, groupOffsets } = computeGraphQLPortOffsets(visible, hidden, resolvedGroupOpen);
+            functionOffsets.forEach((offsetY, func) => {
+                const port = node.getFunctionPort(func);
+                if (port) {
+                    port.rowOffsetY = offsetY;
+                }
+            });
+            (Object.keys(groupOffsets) as GroupKey[]).forEach((group) => {
+                const port = node.getGraphQLGroupPort(group);
+                if (port) {
+                    port.rowOffsetY = groupOffsets[group];
+                }
+            });
 
             // For GraphQL, handle visible and hidden per group
             (Object.keys(visible) as GroupKey[]).forEach((group) => {
@@ -1113,18 +1122,31 @@ export const calculateEntryNodeHeight = (numFunctions: number, isExpanded: boole
     return ENTRY_HEADER_HEIGHT + 2 * ENTRY_ROW_HEIGHT + ROW_PADDING + ENTRY_VIEW_ALL_BUTTON_HEIGHT;
 };
 
+/**
+ * Shared row metrics for the GraphQL body layout (see `GraphQLServiceWidget`/`GroupContainer` in
+ * `GraphQLServiceWidget.tsx`): a service-header block, then per group a header row, optionally
+ * followed by function rows and/or a "show more/fewer" row. `calculateGraphQLNodeHeight` (which
+ * sizes the node) and `computeGraphQLPortOffsets` (which locates each row's port for link routing)
+ * both derive from these same numbers so the two can't drift out of sync.
+ */
+const GQL_PADDING = 8;
+const GQL_BASE_HEIGHT = 64 + 2 * GQL_PADDING;
+const GQL_FUNCTION_HEIGHT = 40 + GQL_PADDING;
+const GQL_SHOW_BUTTON_HEIGHT = 40;
+const GQL_HEADER_HEIGHT = 45 + 2 * GQL_PADDING;
+
+/**
+ * Group render order, top to bottom - must match `GraphQLServiceWidget`'s own `orderedGroups`,
+ * since `computeGraphQLPortOffsets` walks groups in this order to accumulate each one's Y offset.
+ */
+const GQL_GROUP_ORDER: GroupKey[] = ["Query", "Mutation", "Subscription"];
+
 export const calculateGraphQLNodeHeight = (
     visible: GQLFuncListType,
     hidden: GQLFuncListType,
     graphQLGroupOpen: GQLState
 ) => {
-    const PADDING = 8;
-    const BASE_HEIGHT = 64 + 2 * PADDING;
-    const FUNCTION_HEIGHT = 40 + PADDING;
-    const SHOW_BUTTON_HEIGHT = 40;
-    const HEADER_HEIGHT = 45 + 2 * PADDING;
-
-    let totalHeight = BASE_HEIGHT;
+    let totalHeight = GQL_BASE_HEIGHT;
 
     Object.keys(visible).forEach((group) => {
         const visibleCount = visible[group].length;
@@ -1138,14 +1160,14 @@ export const calculateGraphQLNodeHeight = (
 
         if (hasSection) {
             if (isCollapsed) {
-                sectionHeight = HEADER_HEIGHT;
+                sectionHeight = GQL_HEADER_HEIGHT;
             } else {
                 if (hasFunction) {
-                    sectionHeight += HEADER_HEIGHT;
-                    sectionHeight += visibleCount * FUNCTION_HEIGHT;
+                    sectionHeight += GQL_HEADER_HEIGHT;
+                    sectionHeight += visibleCount * GQL_FUNCTION_HEIGHT;
                 }
                 if (hasShowML) {
-                    sectionHeight += SHOW_BUTTON_HEIGHT;
+                    sectionHeight += GQL_SHOW_BUTTON_HEIGHT;
                 }
             }
         }
@@ -1155,6 +1177,52 @@ export const calculateGraphQLNodeHeight = (
 
     return totalHeight;
 };
+
+/**
+ * Computes the Y offset (from the node's top) of each visible GraphQL function row and each
+ * group's header/"show more" row - whichever row a link attached to that group's header port
+ * would actually leave from. Walks the same groups, in the same order and with the same
+ * collapsed/expanded rules `GraphQLServiceWidget` renders them with, so a row's offset here always
+ * matches where it actually draws.
+ */
+function computeGraphQLPortOffsets(
+    visible: GQLFuncListType,
+    hidden: GQLFuncListType,
+    graphQLGroupOpen: GQLState
+): { functionOffsets: Map<CDFunction | CDResourceFunction, number>; groupOffsets: Partial<Record<GroupKey, number>> } {
+    const functionOffsets = new Map<CDFunction | CDResourceFunction, number>();
+    const groupOffsets: Partial<Record<GroupKey, number>> = {};
+
+    let offset = GQL_BASE_HEIGHT;
+    GQL_GROUP_ORDER.forEach((group) => {
+        const visibleItems = visible[group] ?? [];
+        const hiddenItems = hidden[group] ?? [];
+        if (visibleItems.length === 0 && hiddenItems.length === 0) {
+            return;
+        }
+
+        if (!graphQLGroupOpen[group]) {
+            groupOffsets[group] = offset + GQL_HEADER_HEIGHT / 2;
+            offset += GQL_HEADER_HEIGHT;
+            return;
+        }
+
+        if (visibleItems.length > 0) {
+            offset += GQL_HEADER_HEIGHT;
+            visibleItems.forEach((func, index) => {
+                functionOffsets.set(func, offset + index * GQL_FUNCTION_HEIGHT + GQL_FUNCTION_HEIGHT / 2);
+            });
+            offset += visibleItems.length * GQL_FUNCTION_HEIGHT;
+        }
+
+        if (visibleItems.length > PREVIEW_COUNT || hiddenItems.length > 0) {
+            groupOffsets[group] = offset + GQL_SHOW_BUTTON_HEIGHT / 2;
+            offset += GQL_SHOW_BUTTON_HEIGHT;
+        }
+    });
+
+    return { functionOffsets, groupOffsets };
+}
 
 export const getEntryNodeFunctionPortName = (func: CDFunction | CDResourceFunction) => {
     if ((func as CDResourceFunction).accessor) {
