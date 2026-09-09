@@ -243,15 +243,13 @@ export function getNodeBoundingBox(node: NodeModel): BoundingBox {
  * Returns the Y coordinate a link actually leaves/enters a node at, based on the specific port
  * it's attached to - not just the node's box center.
  *
- * The generic in/out ports (and, for `ai:Service` nodes, their single function port - see
- * `AIServiceWidget.tsx`) sit at the node's true vertical center, because `Node` is a flex *row*
- * with those ports as its first/last children (see `styles.ts`). But `GeneralServiceWidget`
- * stacks function rows and workflow event rows in a column *below* the header (`FunctionBox` /
- * `WorkflowEventBox`, each wrapped in a `FunctionBoxWrapper`), so a link attached to one of
- * those specific ports actually leaves from that row's own Y - which can be well below the
- * node's center for a short node with few rows. Treating it as centered is exactly what let a
- * function-row link cut through an unrelated node sitting below where the node's center
- * happened to be.
+ * The generic in/out ports sit at the node's true vertical center, because `Node` is a flex *row*
+ * with those ports as its first/last children (see `styles.ts`). But `GeneralServiceWidget` stacks
+ * function rows and workflow event rows in a column *below* the header (`FunctionBox` /
+ * `WorkflowEventBox`, each wrapped in a `FunctionBoxWrapper`), so a link attached to one of those
+ * specific ports actually leaves from that row's own Y - which can be well below the node's center
+ * for a short node with few rows. Treating it as centered is exactly what let a function-row link
+ * cut through an unrelated node sitting below where the node's center happened to be.
  *
  * `GraphQLServiceWidget` groups functions under collapsible per-group headers, so a group's rows
  * only have a fixed offset once you know which groups are open. `buildDiagramData` does know that
@@ -283,7 +281,7 @@ export function getPortAnchorY(node: NodeModel, port: PortModel | null | undefin
     }
 
     const service = node.node as CDService;
-    if (service?.type === "ai:Service" || service?.type === "graphql:Service") {
+    if (service?.type === "graphql:Service") {
         return center;
     }
 
