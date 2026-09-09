@@ -43,10 +43,6 @@ const Container = styled.div<{ color: string; background: string }>`
     background-image: radial-gradient(var(--vscode-editor-inactiveSelectionBackground) 10%, transparent 0px);
     background-size: 16px 16px;
     font-family: "GilmerRegular";
-
-    & svg:first-child {
-        z-index: 1;
-    }
 `;
 
 const Expand = css`
