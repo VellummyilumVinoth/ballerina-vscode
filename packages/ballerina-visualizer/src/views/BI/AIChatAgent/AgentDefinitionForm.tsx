@@ -34,6 +34,7 @@ import {
     RadioTitle,
 } from "../ProjectForm/styles";
 import { sanitizeOrgHandle, toPascalCase, toSnakeCasePackageName, validateComponentName, validateOrgName, validatePackageName } from "../ProjectForm/utils";
+import { FormStyles } from "../Forms/styles";
 
 type DefinitionDestination = "library" | "current";
 
@@ -88,13 +89,6 @@ const LibraryDetails = styled.div`
     gap: 16px;
 `;
 
-const AdvancedRow = styled.div`
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-`;
-
 interface AgentDefinitionFormProps {
     projectPath: string;
     submitText?: string;
@@ -142,7 +136,7 @@ function LibraryDetailsForm({
 
     return (
         <LibraryDetails>
-            <AdvancedRow>
+            <FormStyles.Row>
                 Advanced Configurations
                 <LinkButton
                     onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
@@ -155,7 +149,7 @@ function LibraryDetailsForm({
                     />
                     {showAdvancedOptions ? "Collapse" : "Expand"}
                 </LinkButton>
-            </AdvancedRow>
+            </FormStyles.Row>
             {showAdvancedOptions && (
                 <LibraryDetails>
                     <TextField
