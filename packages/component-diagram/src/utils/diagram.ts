@@ -324,9 +324,10 @@ export function getPortAnchorY(node: NodeModel, port: PortModel | null | undefin
     }
 
     if (port === node.getViewAllResourcesPort()) {
-        // Only ever linked while collapsed, in which case exactly PREVIEW_COUNT rows are
-        // visible above it (see partitionRegularServiceFunctions in Diagram.tsx).
-        return box.top + ENTRY_HEADER_HEIGHT + PREVIEW_COUNT * ENTRY_ROW_HEIGHT + ENTRY_VIEW_ALL_BUTTON_HEIGHT / 2;
+        // Only ever linked while collapsed, in which case visibleRowCountWhenCollapsed() rows are
+        // visible above it (see partitionRegularServiceFunctions, the count's actual source of truth).
+        return box.top + ENTRY_HEADER_HEIGHT
+            + visibleRowCountWhenCollapsed() * ENTRY_ROW_HEIGHT + ENTRY_VIEW_ALL_BUTTON_HEIGHT / 2;
     }
 
     // A specific function's own port. Ports are added in the same order functions are shown in
@@ -604,6 +605,18 @@ function getGraphQLGroupLabel(accessor?: string, name?: string): GroupKey | null
     return null;
 }
 
+/**
+ * How many function rows show above the "view all" row for a collapsed entry node whose function
+ * count exceeds SHOW_ALL_THRESHOLD - the single source of truth `partitionRegularServiceFunctions`
+ * slices its visible list to below. `calculateEntryNodeHeight` (sizing the node) and
+ * `getPortAnchorY`'s view-all-button case (routing links to it) both need that same count, so they
+ * read it from here too instead of separately hardcoding PREVIEW_COUNT - if this rule ever needs
+ * to vary (e.g. a different preview count per node type), there's exactly one place to change it.
+ */
+function visibleRowCountWhenCollapsed(): number {
+    return PREVIEW_COUNT;
+}
+
 function partitionRegularServiceFunctions(
     service: CDService,
     expandedNodes: Set<string>
@@ -616,7 +629,8 @@ function partitionRegularServiceFunctions(
     if (serviceFunctions.length <= SHOW_ALL_THRESHOLD || isExpanded) {
         return { visible: serviceFunctions, hidden: [] };
     }
-    return { visible: serviceFunctions.slice(0, PREVIEW_COUNT), hidden: serviceFunctions.slice(PREVIEW_COUNT) };
+    const visibleCount = visibleRowCountWhenCollapsed();
+    return { visible: serviceFunctions.slice(0, visibleCount), hidden: serviceFunctions.slice(visibleCount) };
 }
 
 function partitionGraphQLServiceFunctions(
@@ -1164,7 +1178,7 @@ export const calculateEntryNodeHeight = (numFunctions: number, isExpanded: boole
         return ENTRY_HEADER_HEIGHT + numFunctions * ENTRY_ROW_HEIGHT + ROW_PADDING;
     }
 
-    return ENTRY_HEADER_HEIGHT + PREVIEW_COUNT * ENTRY_ROW_HEIGHT + ROW_PADDING + ENTRY_VIEW_ALL_BUTTON_HEIGHT;
+    return ENTRY_HEADER_HEIGHT + visibleRowCountWhenCollapsed() * ENTRY_ROW_HEIGHT + ROW_PADDING + ENTRY_VIEW_ALL_BUTTON_HEIGHT;
 };
 
 /**

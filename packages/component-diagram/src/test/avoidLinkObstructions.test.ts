@@ -308,6 +308,24 @@ describe("getPortAnchorY", () => {
         expect(rowAnchorY).not.toBe(64); // must not fall back to the node's vertical center
     });
 
+    test("anchors the view-all-resources port right after the rows partitionRegularServiceFunctions actually leaves visible", () => {
+        // 5 functions, collapsed, over SHOW_ALL_THRESHOLD (3): partitionRegularServiceFunctions
+        // shows PREVIEW_COUNT (2) rows and hides the rest behind this port. Both the row count
+        // used here and the one baked into the node's own height (calculateEntryNodeHeight) read
+        // from the same visibleRowCountWhenCollapsed() - if that shared count ever desynced from
+        // partitionRegularServiceFunctions' actual slice, this port would anchor at the wrong row
+        // instead of just below the last visible one.
+        const funcs = [1, 2, 3, 4, 5].map((n) => makeResourceFunction("get", `f${n}`));
+        const serviceNode = new EntryNodeModel(makeService("service-1", funcs), "service");
+        serviceNode.height = calculateEntryNodeHeight(funcs.length, false);
+        serviceNode.setPosition(0, 0);
+
+        const viewAllAnchorY = getPortAnchorY(serviceNode, serviceNode.getViewAllResourcesPort());
+
+        // Header (72) + 2 visible rows (48 each) + half the button's own height (40/2).
+        expect(viewAllAnchorY).toBe(188);
+    });
+
     test("anchors the generic in/out ports at the node's true vertical center", () => {
         const serviceNode = new EntryNodeModel(makeService("service-1", [makeResourceFunction("get", "f")]), "service");
         serviceNode.height = calculateEntryNodeHeight(1, false);
