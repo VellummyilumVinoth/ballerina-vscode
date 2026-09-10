@@ -1219,7 +1219,12 @@ export const calculateGraphQLNodeHeight = (
     Object.keys(visible).forEach((group) => {
         const visibleCount = visible[group].length;
         const hiddenCount = hidden[group].length;
-        const hasShowML = visibleCount > PREVIEW_COUNT || hiddenCount > 0;
+        // Matches GraphQLServiceWidget's own canToggleItems (functions.length > SHOW_ALL_THRESHOLD,
+        // over the group's full item count) - not visibleCount > PREVIEW_COUNT, which disagrees
+        // with the widget for a group with exactly SHOW_ALL_THRESHOLD items (all shown as visible,
+        // none hidden, so PREVIEW_COUNT < visibleCount <= SHOW_ALL_THRESHOLD can happen without a
+        // button actually rendering).
+        const hasShowML = visibleCount + hiddenCount > SHOW_ALL_THRESHOLD;
         const isCollapsed = !graphQLGroupOpen[group];
         const hasSection = visibleCount > 0 || hiddenCount > 0;
         const hasFunction = visibleCount > 0;
@@ -1283,7 +1288,8 @@ function computeGraphQLPortOffsets(
             offset += visibleItems.length * ENTRY_ROW_HEIGHT;
         }
 
-        if (visibleItems.length > PREVIEW_COUNT || hiddenItems.length > 0) {
+        // See the matching comment on hasShowML in calculateGraphQLNodeHeight above.
+        if (visibleItems.length + hiddenItems.length > SHOW_ALL_THRESHOLD) {
             groupOffsets[group] = offset + ENTRY_VIEW_ALL_BUTTON_HEIGHT / 2;
             offset += ENTRY_VIEW_ALL_BUTTON_HEIGHT;
         }

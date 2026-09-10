@@ -377,6 +377,39 @@ describe("getPortAnchorY", () => {
         [165, 213, 267.5, 328.5].forEach((anchor) => expect(anchor).not.toBe(center));
     });
 
+    test("doesn't reserve a show-more row for a GraphQL group with exactly SHOW_ALL_THRESHOLD items", () => {
+        // partitionGraphQLServiceFunctions shows a group's items with none hidden whenever the
+        // group's total is <= SHOW_ALL_THRESHOLD (3) - so a 3-query group is fully visible, no
+        // show-more button, matching GraphQLServiceWidget's own canToggleItems (gated on the
+        // group's full item count, not just how many ended up visible). The previous formula
+        // reserved a button row here anyway (visibleCount(3) > PREVIEW_COUNT(2)), shifting every
+        // row/port after this group 40px too far down even though the widget never draws that row.
+        const q1 = makeResourceFunction("get", "q1");
+        const q2 = makeResourceFunction("get", "q2");
+        const q3 = makeResourceFunction("get", "q3");
+        const service = makeGraphQLService("gql-3", {
+            queries: [q1, q2, q3],
+            mutations: [makeRemoteFunction("m1")],
+            subscriptions: [makeResourceFunction("subscribe", "s1")],
+        });
+
+        const gqlNode = buildGraphQLNode(service);
+        gqlNode.setPosition(0, 0);
+
+        // Service header (80) + Query section (61 header + 3*48 rows, no +40 button) + Mutation
+        // and Subscription collapsed headers (61 each) - not 447, which is what the extra
+        // (unrendered) button row would have added.
+        expect(gqlNode.height).toBe(407);
+
+        expect(getPortAnchorY(gqlNode, gqlNode.getFunctionPort(q1))).toBe(165);
+        expect(getPortAnchorY(gqlNode, gqlNode.getFunctionPort(q2))).toBe(213);
+        expect(getPortAnchorY(gqlNode, gqlNode.getFunctionPort(q3))).toBe(261);
+
+        // Mutation/Subscription sit right after Query's 3 rows, not 40px further down.
+        expect(getPortAnchorY(gqlNode, gqlNode.getGraphQLGroupPort("Mutation"))).toBe(315.5);
+        expect(getPortAnchorY(gqlNode, gqlNode.getGraphQLGroupPort("Subscription"))).toBe(376.5);
+    });
+
     test("warns and falls back to center for a GraphQL port anchored without going through buildDiagramData", () => {
         // buildGraphQLNode (used above) goes through the real buildDiagramData pipeline, which is
         // what stamps rowOffsetY via computeGraphQLPortOffsets. Building the node directly instead
