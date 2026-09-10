@@ -199,7 +199,10 @@ export const LINK_DETOUR_MARGIN = 16;
  * `Node`/`Box`/`FunctionBoxWrapper` in `nodes/EntryNode/components/styles.ts` and the row
  * components in `GeneralWidget.tsx`). `calculateEntryNodeHeight`/`calculateWorkflowNodeHeight`
  * (which size a node) and `getPortAnchorY` (which locates a specific row's port for link
- * routing) both derive from these same numbers so the two can't drift out of sync.
+ * routing) both derive from these same numbers so the two can't drift out of sync - as do
+ * `calculateGraphQLNodeHeight`/`computeGraphQLPortOffsets` further down, since `GraphQLServiceWidget`
+ * renders its function and "show more" rows with these exact same styled components (see the
+ * comment above `GQL_BASE_HEIGHT`), not a GraphQL-specific size of its own.
  */
 const ROW_PADDING = 8;
 const ENTRY_HEADER_HEIGHT = 64 + ROW_PADDING;
@@ -1165,17 +1168,19 @@ export const calculateEntryNodeHeight = (numFunctions: number, isExpanded: boole
 };
 
 /**
- * Shared row metrics for the GraphQL body layout (see `GraphQLServiceWidget`/`GroupContainer` in
+ * Sizing for the GraphQL body layout (see `GraphQLServiceWidget`/`GroupContainer` in
  * `GraphQLServiceWidget.tsx`): a service-header block, then per group a header row, optionally
- * followed by function rows and/or a "show more/fewer" row. `calculateGraphQLNodeHeight` (which
- * sizes the node) and `computeGraphQLPortOffsets` (which locates each row's port for link routing)
- * both derive from these same numbers so the two can't drift out of sync.
+ * followed by function rows and/or a "show more/fewer" row. The function/show-more rows are the
+ * exact same `FunctionBoxWrapper`/`StyledServiceBox`/`ViewAllButton` components `GeneralWidget`
+ * uses (GraphQLServiceWidget imports them directly), so their height is `ENTRY_ROW_HEIGHT`/
+ * `ENTRY_VIEW_ALL_BUTTON_HEIGHT`, not a separate GraphQL-specific number - only the group header
+ * row (45px tall, wider padding) has no entry-node equivalent and gets its own constant.
+ * `calculateGraphQLNodeHeight` (which sizes the node) and `computeGraphQLPortOffsets` (which
+ * locates each row's port for link routing) both derive from these same numbers so the two can't
+ * drift out of sync.
  */
-const GQL_PADDING = 8;
-const GQL_BASE_HEIGHT = 64 + 2 * GQL_PADDING;
-const GQL_FUNCTION_HEIGHT = 40 + GQL_PADDING;
-const GQL_SHOW_BUTTON_HEIGHT = 40;
-const GQL_HEADER_HEIGHT = 45 + 2 * GQL_PADDING;
+const GQL_BASE_HEIGHT = 64 + 2 * ROW_PADDING;
+const GQL_HEADER_HEIGHT = 45 + 2 * ROW_PADDING;
 
 /**
  * Group render order, top to bottom - must match `GraphQLServiceWidget`'s own `orderedGroups`,
@@ -1206,10 +1211,10 @@ export const calculateGraphQLNodeHeight = (
             } else {
                 if (hasFunction) {
                     sectionHeight += GQL_HEADER_HEIGHT;
-                    sectionHeight += visibleCount * GQL_FUNCTION_HEIGHT;
+                    sectionHeight += visibleCount * ENTRY_ROW_HEIGHT;
                 }
                 if (hasShowML) {
-                    sectionHeight += GQL_SHOW_BUTTON_HEIGHT;
+                    sectionHeight += ENTRY_VIEW_ALL_BUTTON_HEIGHT;
                 }
             }
         }
@@ -1252,14 +1257,14 @@ function computeGraphQLPortOffsets(
         if (visibleItems.length > 0) {
             offset += GQL_HEADER_HEIGHT;
             visibleItems.forEach((func, index) => {
-                functionOffsets.set(func, offset + index * GQL_FUNCTION_HEIGHT + GQL_FUNCTION_HEIGHT / 2);
+                functionOffsets.set(func, offset + index * ENTRY_ROW_HEIGHT + ENTRY_ROW_HEIGHT / 2);
             });
-            offset += visibleItems.length * GQL_FUNCTION_HEIGHT;
+            offset += visibleItems.length * ENTRY_ROW_HEIGHT;
         }
 
         if (visibleItems.length > PREVIEW_COUNT || hiddenItems.length > 0) {
-            groupOffsets[group] = offset + GQL_SHOW_BUTTON_HEIGHT / 2;
-            offset += GQL_SHOW_BUTTON_HEIGHT;
+            groupOffsets[group] = offset + ENTRY_VIEW_ALL_BUTTON_HEIGHT / 2;
+            offset += ENTRY_VIEW_ALL_BUTTON_HEIGHT;
         }
     });
 
