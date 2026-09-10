@@ -60,7 +60,7 @@ A workflow function may declare, in this order, only:
    (`callActivity`, `sleep`, `await`, …). Omit it for a workflow that needs none of them.
 2. One `anydata`-subtype parameter — the workflow's **input**.
 3. One events parameter — a **closed record whose every field is `future<T>`**, one field per
-   external signal the workflow waits on:
+   external data event the workflow waits on:
 
    ```ballerina
    type <Name>Events record {|
@@ -70,11 +70,11 @@ A workflow function may declare, in this order, only:
    ```
 
    A record with a plain (non-`future`) field is not recognised as an events parameter. Only add
-   this parameter when the workflow needs to wait on external signals — see "Waiting on events"
-   below.
+   this parameter when the workflow needs to wait on external data events — see "Waiting on data
+   events" below.
 
-All three are optional; a workflow with no external input and no signals to wait on can declare
-zero parameters.
+All three are optional; a workflow with no external input and no data events to wait on can
+declare zero parameters.
 
 ### Determinism inside the workflow function
 
@@ -167,36 +167,37 @@ Two rules that are easy to get wrong and silently break the diagram or the compi
 
 ### Retrying a failed activity
 
-`callActivity` takes an `options` argument (pass it by name — positional params sit between it and
-the activity reference):
+`callActivity` takes a `retryPolicy` argument directly — there is no `options` wrapper — so pass it
+by name (positional params sit between it and the activity reference):
 
 ```ballerina
 <Result> result = check ctx->callActivity(<activityName>, {<args>},
-        options = {retryPolicy: {maxRetries: 5, retryDelay: 2.0d, retryBackoff: 2.0d}});
+        retryPolicy = {maxRetries: 5, retryDelay: 2.0d, retryBackoff: 2.0d});
 ```
 
 `retryPolicy` accepts one of:
 
 - `AutoRetry` (`maxRetries`, `retryDelay`, `retryBackoff`, optional `maxRetryDelay`) — retry
   automatically with exponential backoff.
-- `ReviewTaskDefinition` (`userRoles`, optional `title`/`description`/`timeout`) — on failure,
-  hand the step to a human for review instead of retrying automatically.
-- `NoAutomaticRetry` — the default when `options` is omitted. The error from the activity is
+- `HumanReview` — on failure, hand the step to a human for review instead of retrying
+  automatically. Verify its field names against the resolved `ballerina/workflow` version before
+  writing a literal for it rather than assuming the shape from memory.
+- `NoAutomaticRetry` — the default when `retryPolicy` is omitted. The error from the activity is
   returned directly to the caller.
 
-Omit `options` entirely for the common case (matches every example in the official guide); only
-add it when the user asks for retry or escalation behavior.
+Omit `retryPolicy` entirely for the common case (matches every example in the official guide);
+only add it when the user asks for retry or escalation behavior.
 
-## Waiting on events
+## Waiting on data events
 
-A **single** external signal is a plain Ballerina `wait` on the matching `future<T>` field of the
-events record — no `Context` call involved:
+A **single** external data event is a plain Ballerina `wait` on the matching `future<T>` field of
+the events record — no `Context` call involved:
 
 ```ballerina
 PaymentData payment = check wait events.paymentReceived;
 ```
 
-**Multiple** signals together go through `ctx->await`, with the result **tuple-destructured**:
+**Multiple** data events together go through `ctx->await`, with the result **tuple-destructured**:
 
 ```ballerina
 [string, boolean] [note, pass] = check ctx->await([events.reviewerNote, events.compliancePass], minCount = 2);
