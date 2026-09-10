@@ -1452,6 +1452,45 @@ export interface TriggerModelsResponse {
     localRepositoryResults?: ServiceModel[];
 }
 
+export interface ModelResolutionIssue {
+    code: "UNSUPPORTED_CONNECTOR_VERSION" | "NO_SUPPORTED_VERSION_AVAILABLE";
+    orgName: string;
+    moduleName: string;
+    currentVersion?: string;
+    requiredVersion?: string;
+}
+
+export interface ConnectorUpgradeAdviceRequest {
+    filePath: string;
+}
+
+export interface ConnectorUpgradeAdvice {
+    orgName: string;
+    moduleName: string;
+    packageName: string;
+    currentVersion: string;
+    minSupportedVersion: string;
+    breaking: boolean;
+    usedInFile?: string;
+}
+
+export interface ConnectorUpgradeAdviceResponse {
+    advice: ConnectorUpgradeAdvice[];
+    errorMsg?: string;
+    stacktrace?: string;
+}
+
+export interface PullConnectorUpgradeRequest {
+    orgName: string;
+    moduleName: string;
+    packageName: string;
+    targetVersion: string;
+}
+
+export interface PullConnectorUpgradeResult {
+    success: boolean;
+}
+
 // <-------- Trigger Related ------->
 
 // <-------- Service Designer Related ------->
@@ -1480,6 +1519,7 @@ export interface ListenerModelRequest {
 }
 export interface ListenerModelResponse {
     listener: ListenerModel;
+    issue?: ModelResolutionIssue;
 }
 
 export interface ListenerSourceCodeRequest {
@@ -1504,6 +1544,7 @@ export interface ServiceModelRequest {
 }
 export interface ServiceModelResponse {
     service: ServiceModel;
+    issue?: ModelResolutionIssue;
 }
 export interface ServiceSourceCodeRequest {
     filePath: string;
@@ -1629,6 +1670,7 @@ export interface ServiceModelInitResponse {
     serviceInitModel?: ServiceInitModel;
     errorMsg?: string;
     stacktrace?: string;
+    issue?: ModelResolutionIssue;
 }
 
 export interface ServiceInitSourceRequest {
@@ -2171,8 +2213,8 @@ export interface WorkspaceDeploymentRequest {
  * A structured, multi-representation icon descriptor resolved by the Language Server (Phase-6 icon
  * architecture). The LS fills `url`/`kind`/`source` and any connector-declared `glyph`/`color`; the IDE
  * completes missing `glyph`/`color` from its brand-icon registry and applies the `kind` default.
- * `light`/`dark` are a paired set of theme-specific images (data: URI) used when a single `url` isn't
- * theme-aware.
+ * `light`/`dark` are a paired set of theme-specific raw SVG documents used when a single `url` isn't
+ * theme-aware. Clients turn the selected document into an image URI locally.
  */
 export interface IconDescriptor {
     url?: string;
@@ -2211,6 +2253,7 @@ export interface BaseArtifact<T = any> {
     type: DIRECTORY_MAP;
     name: string;
     module?: string;
+    triggerKind?: string; // Canonical integration kind for service/listener artifacts
     scope: string;
     visibility?: VISIBILITY;
     icon?: IconDescriptor | string; // Resolved icon descriptor; a bare string (legacy URL) is accepted
@@ -2330,6 +2373,7 @@ export interface BIInterface extends BaseLangClientInterface {
     addFunctionSourceCode: (params: FunctionSourceCodeRequest) => Promise<ResourceSourceCodeResponse>;
     getResourceReturnTypes: (params: ResourceReturnTypesRequest) => Promise<VisibleTypesResponse>;
     getServiceInitModel: (params: ServiceModelRequest) => Promise<ServiceModelInitResponse>;
+    getConnectorUpgradeAdvice: (params: ConnectorUpgradeAdviceRequest) => Promise<ConnectorUpgradeAdviceResponse>;
     createServiceAndListener: (params: ServiceInitSourceRequest) => Promise<SourceEditResponse>;
     validateProperty: (params: ValidatePropertyRequest) => Promise<ValidatePropertyResponse>;
 
