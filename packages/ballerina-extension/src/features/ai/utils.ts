@@ -37,7 +37,7 @@ import {
 } from '../../utils/ai/auth';
 import { AIStateMachine } from '../../views/ai-panel/aiMachine';
 import { AIMachineEventType } from '@wso2/ballerina-core/lib/state-machine-types';
-import { CONFIG_FILE_NAME, CONFIGURE_DEFAULT_PROVIDER_ACTION, DEFAULT_PROVIDER_ADDED, DEFAULT_PROVIDER_NOT_CONFIGURED_PROMPT, DEFAULT_PROVIDER_TOKEN_REFRESH_FAILED, ERROR_NO_BALLERINA_SOURCES, LLM_API_BASE_PATH, LOGIN_REQUIRED_WARNING_FOR_DEFAULT_MODEL, PROGRESS_BAR_MESSAGE_FROM_WSO2_DEFAULT_EMBEDDING, PROGRESS_BAR_MESSAGE_FROM_WSO2_DEFAULT_MODEL, SIGN_IN_BI_COPILOT } from './constants';
+import { CONFIG_FILE_NAME, CONFIGURE_DEFAULT_PROVIDER_ACTION, DEFAULT_PROVIDER_ADDED, DEFAULT_PROVIDER_NOT_CONFIGURED_PROMPT, DEFAULT_PROVIDER_TOKEN_REFRESH_FAILED, ERROR_NO_BALLERINA_SOURCES, LLM_API_BASE_PATH, LOGIN_REQUIRED_WARNING_FOR_DEFAULT_MODEL, PROGRESS_BAR_MESSAGE_FROM_WSO2_DEFAULT_EMBEDDING, PROGRESS_BAR_MESSAGE_FROM_WSO2_DEFAULT_MODEL, RUN_CANCELLED_DEFAULT_PROVIDER_NOT_CONFIGURED, SIGN_IN_BI_COPILOT } from './constants';
 import { getCurrentBallerinaProjectFromContext } from '../config-generator/configGenerator';
 import { BallerinaProject, LoginMethod, AuthCredentials, DefaultProviderKind, GET_DEFAULT_MODEL_PROVIDER, GET_DEFAULT_EMBEDDING_PROVIDER } from '@wso2/ballerina-core';
 import { BallerinaExtension } from 'src/core';
@@ -336,7 +336,16 @@ export async function addConfigFile(
     return progress;
 }
 
+// Config can also come from BAL_CONFIG_FILES / BAL_CONFIG_VAR_* (e.g. CI); trust bal run over Config.toml alone.
+function isProviderTokenConfiguredViaEnv(): boolean {
+    return !!process.env.BAL_CONFIG_FILES || Object.keys(process.env).some(key => key.startsWith('BAL_CONFIG_VAR_'));
+}
+
 function hasConfiguredProviderToken(projectPath: string): boolean {
+    if (isProviderTokenConfiguredViaEnv()) {
+        return true;
+    }
+
     const configFilePath = findFileCaseInsensitive(projectPath, CONFIG_FILE_NAME);
     if (!fs.existsSync(configFilePath)) {
         return false;
@@ -439,7 +448,8 @@ export function promptSignInAndRetry(loginWarning: string, onAuthenticated: () =
         pendingAuthRetries = retries;
 
         let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
-        const subscription = AIStateMachine.service().subscribe((state) => {
+        let subscription: ReturnType<ReturnType<typeof AIStateMachine.service>['subscribe']> | undefined;
+        subscription = AIStateMachine.service().subscribe((state) => {
             if (state.value !== 'Authenticated') {
                 return;
             }
@@ -447,7 +457,7 @@ export function promptSignInAndRetry(loginWarning: string, onAuthenticated: () =
                 clearTimeout(timeoutHandle);
             }
             pendingAuthRetries = null;
-            subscription.unsubscribe();
+            subscription?.unsubscribe();
             retries.forEach(retry => retry());
         });
 
@@ -455,7 +465,7 @@ export function promptSignInAndRetry(loginWarning: string, onAuthenticated: () =
             if (pendingAuthRetries === retries) {
                 pendingAuthRetries = null;
             }
-            subscription.unsubscribe();
+            subscription?.unsubscribe();
         }, AUTH_SUBSCRIPTION_TIMEOUT_MS);
 
         // Reset a login stuck in Authenticating from a previous cancelled attempt.
@@ -472,6 +482,7 @@ export function promptSignInAndRetry(loginWarning: string, onAuthenticated: () =
 async function promptToConfigureDefaultProvider(projectPath: string): Promise<boolean> {
     const selection = await vscode.window.showInformationMessage(DEFAULT_PROVIDER_NOT_CONFIGURED_PROMPT, CONFIGURE_DEFAULT_PROVIDER_ACTION);
     if (selection !== CONFIGURE_DEFAULT_PROVIDER_ACTION) {
+        vscode.window.showWarningMessage(RUN_CANCELLED_DEFAULT_PROVIDER_NOT_CONFIGURED);
         return false;
     }
 
@@ -579,33 +590,42 @@ export async function getProjectSource(projectRoot: string): Promise<ProjectSour
         }
     }
 
-    // Read modules
-    const modulesDir = path.join(projectRoot, 'modules');
-    if (fs.existsSync(modulesDir)) {
-        const modules = fs.readdirSync(modulesDir, { withFileTypes: true });
-        for (const moduleDir of modules) {
-            if (moduleDir.isDirectory()) {
-                const projectModule: ProjectModule = {
-                    moduleName: moduleDir.name,
-                    sourceFiles: [],
-                    isGenerated: false,
-                };
+    projectSource.projectModules.push(...await readModulesDir(path.join(projectRoot, 'modules'), false));
+    // 'generated/' is a valid module root too (see getModuleDirectory in rpc-manager.ts).
+    projectSource.projectModules.push(...await readModulesDir(path.join(projectRoot, 'generated'), true));
 
-                const moduleFiles = fs.readdirSync(path.join(modulesDir, moduleDir.name));
-                for (const file of moduleFiles) {
-                    if (file.endsWith('.bal')) {
-                        const filePath = path.join(modulesDir, moduleDir.name, file);
-                        const content = await fs.promises.readFile(filePath, 'utf-8');
-                        projectModule.sourceFiles.push({ filePath, content });
-                    }
+    return projectSource;
+}
+
+async function readModulesDir(modulesDir: string, isGenerated: boolean): Promise<ProjectModule[]> {
+    if (!fs.existsSync(modulesDir)) {
+        return [];
+    }
+
+    const projectModules: ProjectModule[] = [];
+    const modules = fs.readdirSync(modulesDir, { withFileTypes: true });
+    for (const moduleDir of modules) {
+        if (moduleDir.isDirectory()) {
+            const projectModule: ProjectModule = {
+                moduleName: moduleDir.name,
+                sourceFiles: [],
+                isGenerated,
+            };
+
+            const moduleFiles = fs.readdirSync(path.join(modulesDir, moduleDir.name));
+            for (const file of moduleFiles) {
+                if (file.endsWith('.bal')) {
+                    const filePath = path.join(modulesDir, moduleDir.name, file);
+                    const content = await fs.promises.readFile(filePath, 'utf-8');
+                    projectModule.sourceFiles.push({ filePath, content });
                 }
-
-                projectSource.projectModules.push(projectModule);
             }
+
+            projectModules.push(projectModule);
         }
     }
 
-    return projectSource;
+    return projectModules;
 }
 
 /**

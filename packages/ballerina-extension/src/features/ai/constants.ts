@@ -34,4 +34,5 @@ export const DEFAULT_EMBEDDING_PROVIDER_ADDED = "WSO2 default embedding provider
 export const DEFAULT_PROVIDER_TOKEN_REFRESH_FAILED = "Could not refresh the WSO2 default model provider access token. The integration may fail with invalid credentials.";
 export const DEFAULT_PROVIDER_NOT_CONFIGURED_PROMPT = "This integration uses the WSO2 default AI provider, but it isn't configured yet. Configure it now?";
 export const CONFIGURE_DEFAULT_PROVIDER_ACTION = "Configure Now";
+export const RUN_CANCELLED_DEFAULT_PROVIDER_NOT_CONFIGURED = "Run cancelled: the WSO2 default AI provider isn't configured.";
 export const LLM_API_BASE_PATH = "/llm-api/v1.0";
