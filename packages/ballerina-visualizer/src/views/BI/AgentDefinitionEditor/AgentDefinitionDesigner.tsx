@@ -1140,7 +1140,7 @@ export function AgentDefinitionDesigner(props: AgentDefinitionDesignerProps) {
         types: (runFn.returnType?.types?.length ?? 0) > 0
             ? runFn.returnType.types.map((t, i) => (i === 0 ? { ...t, ballerinaType: outputType } : t))
             : [{ fieldType: "TYPE", selected: true, ballerinaType: outputType }],
-    }] : [], [runFn?.returnType?.value]);
+    }] : [], [Boolean(runFn), runFn?.returnType?.value]);
 
     const initFunction = agentClassModel?.functions?.find((f) => f.kind === "INIT");
     const initParameterNames = new Set(

@@ -581,6 +581,10 @@ function getDisplayLabel(location: VisualizerLocation): string {
             return "Configurable Variables";
         case MACHINE_VIEW.EvalsetViewer:
             return "Evalset Viewer";
+        case MACHINE_VIEW.AddAgent:
+            return "Agent";
+        case MACHINE_VIEW.AddAgentDefinition:
+            return "Agent Definition";
 
         default:
             return location.view || "";
