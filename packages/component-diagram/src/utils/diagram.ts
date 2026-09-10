@@ -262,9 +262,12 @@ export function getNodeBoundingBox(node: NodeModel): BoundingBox {
  * (it's how `calculateGraphQLNodeHeight` sizes the node), so it stamps each GraphQL function/group
  * port's row offset onto the port itself (`NodePortModel.rowOffsetY`, via
  * `computeGraphQLPortOffsets`) once it lays the rows out; this function just reads that back.
+ *
+ * `box` lets a caller that already has the node's bounding box (e.g. `getLinkAnchors`, which needs
+ * it for the port's X too) pass it in instead of having this function compute it again.
  */
-export function getPortAnchorY(node: NodeModel, port: PortModel | null | undefined): number {
-    const box = getNodeBoundingBox(node);
+export function getPortAnchorY(node: NodeModel, port: PortModel | null | undefined, box?: BoundingBox): number {
+    box ??= getNodeBoundingBox(node);
     const center = (box.top + box.bottom) / 2;
     if (!port || !(node instanceof EntryNodeModel)) {
         return center;
@@ -410,14 +413,16 @@ export function getLinkAnchors(link: NodeLinkModel): LinkAnchors | null {
     if (!sourceNode || !targetNode || sourceNode === targetNode) {
         return null;
     }
+    const sourceBox = getNodeBoundingBox(sourceNode);
+    const targetBox = getNodeBoundingBox(targetNode);
     return {
         source: {
-            x: getNodeBoundingBox(sourceNode).right,
-            y: getPortAnchorY(sourceNode, link.getSourcePort()),
+            x: sourceBox.right,
+            y: getPortAnchorY(sourceNode, link.getSourcePort(), sourceBox),
         },
         target: {
-            x: getNodeBoundingBox(targetNode).left,
-            y: getPortAnchorY(targetNode, link.getTargetPort()),
+            x: targetBox.left,
+            y: getPortAnchorY(targetNode, link.getTargetPort(), targetBox),
         },
     };
 }
@@ -459,6 +464,11 @@ export function avoidLinkObstructions(engine: DiagramEngine) {
     const allNodes = model.getNodes() as NodeModel[];
     const links = model.getLinks().filter((linkModel): linkModel is NodeLinkModel => linkModel instanceof NodeLinkModel);
 
+    // Every node's box is fixed for the rest of this pass (autoDistribute finalizes positions
+    // before calling this), so it's computed once per node here rather than once per (link, node)
+    // pair below - the obstruction scan runs this for every node against every link otherwise.
+    const nodeBoxes = new Map<NodeModel, BoundingBox>(allNodes.map((node) => [node, getNodeBoundingBox(node)]));
+
     links.forEach((link) => {
         // Every link starts life with exactly 2 points (see NodeLinkModel/DefaultLinkModel), but
         // guard against being run more than once over the same link.
@@ -488,7 +498,7 @@ export function avoidLinkObstructions(engine: DiagramEngine) {
         // construction below provably safe.
         const obstructions = allNodes
             .filter((node) => node !== link.sourceNode && node !== link.targetNode)
-            .map(getNodeBoundingBox)
+            .map((node) => nodeBoxes.get(node)!)
             .filter((box) => box.right > anchorLeft.x && box.left < anchorRight.x);
         if (obstructions.length === 0) {
             // The common case - most links span adjacent columns with nothing between them - so
@@ -613,12 +623,13 @@ function getGraphQLGroupLabel(accessor?: string, name?: string): GroupKey | null
 }
 
 /**
- * How many function rows show above the "view all" row for a collapsed entry node whose function
- * count exceeds SHOW_ALL_THRESHOLD - the single source of truth `partitionRegularServiceFunctions`
- * slices its visible list to below. `calculateEntryNodeHeight` (sizing the node) and
- * `getPortAnchorY`'s view-all-button case (routing links to it) both need that same count, so they
- * read it from here too instead of separately hardcoding PREVIEW_COUNT - if this rule ever needs
- * to vary (e.g. a different preview count per node type), there's exactly one place to change it.
+ * How many rows show above the "view all"/"show more" row for a collapsed, over-threshold
+ * function list - both the plain-service case (`partitionRegularServiceFunctions`) and, per
+ * group, the GraphQL case (`partitionGraphQLServiceFunctions`) slice their visible list to this
+ * count. `calculateEntryNodeHeight` (sizing a plain node) and `getPortAnchorY`'s view-all-button
+ * case (routing links to it) both need that same count too, so every one of these reads it from
+ * here instead of separately hardcoding PREVIEW_COUNT - if this rule ever needs to vary (e.g. a
+ * different preview count per node type), there's exactly one place to change it.
  */
 function visibleRowCountWhenCollapsed(): number {
     return PREVIEW_COUNT;
@@ -680,8 +691,9 @@ function partitionGraphQLServiceFunctions(
         if (items.length <= SHOW_ALL_THRESHOLD || groupExpanded) {
             visible[group].push(...items);
         } else {
-            visible[group].push(...items.slice(0, PREVIEW_COUNT));
-            hidden[group].push(...items.slice(PREVIEW_COUNT));
+            const visibleCount = visibleRowCountWhenCollapsed();
+            visible[group].push(...items.slice(0, visibleCount));
+            hidden[group].push(...items.slice(visibleCount));
         }
     });
 
