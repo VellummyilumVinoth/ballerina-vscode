@@ -854,6 +854,8 @@ export interface ProjectDiagnosticsRequest {
 
 export interface ProjectDiagnosticsResponse {
     errorDiagnosticMap?: Map<string, Diagnostic[]>;
+    /** Why diagnostics could not be produced (e.g. the package failed to compile). */
+    errorMsg?: string;
 }
 
 export interface MainFunctionParamsRequest {
@@ -1072,8 +1074,16 @@ export interface ActivityActionAnalysis {
     supported: boolean;
     /** When unsupported, the human-readable reasons. */
     reasons: string[];
-    /** The derived activity parameters. */
-    params: { name: string; type: string; required: boolean; description?: string }[];
+    /**
+     * The derived activity parameters. `name` is the bare parameter name — it matches the action
+     * node template's property key and is what the form shows; `escapedName` carries the leading
+     * quote for a Ballerina keyword (`'from`) and belongs only in text emitted as source.
+     *
+     * `escapedName` is optional because the language server ships with the Ballerina distribution
+     * rather than with this extension, so a newer extension can meet an older server. One that
+     * predates the field sends only `name`, already carrying the quote — fall back to it.
+     */
+    params: { name: string; escapedName?: string; type: string; required: boolean; description?: string }[];
     /** The derived activity return type (success type, without |error). */
     returnType: string;
     /** When the action returns a stream, its element type T (the activity returns T[]); else absent. */
@@ -1584,6 +1594,11 @@ export interface ServiceModelFromCodeRequest {
     filePath: string;
     codedata: {
         lineRange: LineRange; // For the entire service
+        // The service's own attach point, as the language server last reported it
+        // (`properties.basePath.value`). A range recorded before an edit can come to
+        // enclose a different service; naming the one being edited lets the server
+        // refuse that match instead of answering with the wrong service.
+        originalName?: string;
     };
 }
 export interface ServiceModelFromCodeResponse {
@@ -1935,6 +1950,10 @@ export interface ResourceSourceCodeResponse {
         [key: string]: TextEdit[];
     };
     validationErrors?: ValidationResult[];
+    // An unexpected failure the builder threw, distinct from a validation failure. `textEdits`
+    // is empty whenever this is set (see CommonSourceResponse(Throwable) on the language server).
+    errorMsg?: string;
+    stacktrace?: string;
 }
 
 export interface ResourceReturnTypesRequest {
