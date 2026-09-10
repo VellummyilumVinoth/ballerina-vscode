@@ -359,6 +359,29 @@ describe("getPortAnchorY", () => {
         [165, 213, 267.5, 328.5].forEach((anchor) => expect(anchor).not.toBe(center));
     });
 
+    test("warns and falls back to center for a GraphQL port anchored without going through buildDiagramData", () => {
+        // buildGraphQLNode (used above) goes through the real buildDiagramData pipeline, which is
+        // what stamps rowOffsetY via computeGraphQLPortOffsets. Building the node directly instead
+        // - as a caller bypassing buildDiagramData would - never stamps it, so this reproduces
+        // exactly the gap the fallback exists to cover: it shouldn't throw, but it also shouldn't
+        // fail silently.
+        const q1 = makeResourceFunction("get", "q1");
+        const service = makeGraphQLService("gql-2", { queries: [q1], mutations: [], subscriptions: [] });
+        const gqlNode = new EntryNodeModel(service, "service");
+        gqlNode.height = 200;
+        gqlNode.setPosition(0, 0); // center: 100
+
+        const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+        try {
+            const anchor = getPortAnchorY(gqlNode, gqlNode.getFunctionPort(q1));
+            expect(anchor).toBe(100); // falls back to center, doesn't throw
+            expect(warnSpy).toHaveBeenCalledTimes(1);
+            expect(warnSpy.mock.calls[0][0]).toContain("getPortAnchorY");
+        } finally {
+            warnSpy.mockRestore();
+        }
+    });
+
     test("anchors an ai:Service's chat/decision ports by AIServiceWidget's fixed render order, not by resourceFunctions' array order", () => {
         // AIServiceWidget always renders the chat row above the decision row when both are
         // present, regardless of which one appears first in `resourceFunctions` - unlike a plain

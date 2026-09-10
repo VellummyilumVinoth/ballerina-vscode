@@ -283,7 +283,21 @@ export function getPortAnchorY(node: NodeModel, port: PortModel | null | undefin
     const service = node.node as CDService;
     if (service?.type === "graphql:Service") {
         const offset = (port as NodePortModel).rowOffsetY;
-        return offset === undefined ? center : box.top + offset;
+        if (offset === undefined) {
+            // Only reachable if this port is anchored before buildDiagramData's
+            // computeGraphQLPortOffsets step stamps it - e.g. a caller that builds nodes/links
+            // directly instead of going through buildDiagramData. Falling back to center keeps
+            // this from throwing, but it's exactly the "link cuts through a function row"
+            // approximation this function otherwise exists to avoid, so surface it rather than
+            // let it fail silently.
+            console.warn(
+                `getPortAnchorY: GraphQL port "${(port as NodePortModel).getOptions().name}" on node ` +
+                `"${node.getID()}" has no rowOffsetY - falling back to the node's center. Anchor GraphQL ` +
+                "ports via buildDiagramData (which stamps rowOffsetY) before calling getPortAnchorY."
+            );
+            return center;
+        }
+        return box.top + offset;
     }
 
     if (service?.type === "ai:Service") {
