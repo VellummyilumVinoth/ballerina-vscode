@@ -29,9 +29,9 @@ export interface Point2D {
 }
 
 /**
- * Fraction of a segment's horizontal span used as its bezier control-point offset - the
- * n8n/React-Flow-style "smooth" edge, where a link always leaves/enters a point horizontally
- * regardless of how much vertical distance it covers. 0.5 (half the horizontal distance on each
+ * Fraction of a segment's horizontal span used as its bezier control-point offset - a "smooth"
+ * edge style where a link always leaves/enters a point horizontally regardless of how much
+ * vertical distance it covers. 0.5 (half the horizontal distance on each
  * end) reads as a clear, consistent S-curve at this diagram's scale (NODE_GAP_X=160,
  * ENTRY_NODE_WIDTH=240 - a typical inter-column segment is comfortably wider than the resulting
  * offset) without the curve looking over-bowed on longer segments.
@@ -63,8 +63,8 @@ interface BezierSegment {
  * shorter than LINK_MIN_CURVE_OFFSET, that upper bound (the segment's own span) wins over the
  * floor, which is exactly what should happen. For a purely vertical segment (p1.x === p0.x) the
  * offset collapses to 0 - there's no horizontal distance to bow across, so the "segment" is
- * drawn as a straight vertical cubic (a degenerate curve, still valid, matching the n8n rule
- * that a link only ever curves horizontally).
+ * drawn as a straight vertical cubic (a degenerate curve, still valid, matching the rule that a
+ * link only ever curves horizontally).
  */
 function buildBezierSegment(p0: Point2D, p1: Point2D): BezierSegment {
     const dx = p1.x - p0.x;
@@ -224,8 +224,8 @@ export class NodeLinkModel extends DefaultLinkModel {
      *
      * Every link - plain 2-point or multi-point detour alike - is drawn the same way: chained
      * cubic-bezier segments through every point (see buildBezierPath), for a consistent curvy
-     * look across the whole diagram (n8n-style: a link always leaves/enters a point
-     * horizontally, regardless of its overall angle).
+     * look across the whole diagram (a link always leaves/enters a point horizontally,
+     * regardless of its overall angle).
      */
     getSVGPath(): string {
         return buildBezierPath(this.getPoints().map((point) => point.getPosition()));

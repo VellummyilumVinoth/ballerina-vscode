@@ -122,7 +122,8 @@ describe("NodeLinkModel.getSVGPath - single segment (plain 2-point link)", () =>
     test("the arrowhead-relevant tangent at the very end of the path is purely horizontal", () => {
         // Whatever the link's overall angle, control point 2 shares the target's Y - so the
         // tangent SVG's marker orient="auto" would read at the end is always horizontal. This is
-        // a deliberate n8n-style consequence, not a bug: verify it holds even for a steep link.
+        // a deliberate consequence of this curve style, not a bug: verify it holds even for a
+        // steep link.
         const link = buildLinkWithPoints([{ x: 0, y: 0 }, { x: 100, y: 500 }]);
         const { start, segments } = parseBezierPath(link.getSVGPath());
         const { c1, c2, end } = segments[0];
