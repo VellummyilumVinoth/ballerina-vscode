@@ -371,8 +371,15 @@ export interface LinkAnchors {
 }
 
 /**
- * Where a link's two ends actually attach: out/function ports sit on their node's inner (facing)
- * edge and in-ports on the target's, at the Y `getPortAnchorY` computes for that specific port.
+ * Where a link's two ends actually attach: every node widget renders its "in" port as the first
+ * child of a row layout and its "out"/function ports as the last (see e.g. `LeftPortWidget`/
+ * `RightPortWidget` in ConnectionNodeWidget.tsx and ListenerNodeWidget.tsx, and the analogous
+ * `TopPortWidget`/`BottomPortWidget` pairing for entry nodes) - so a link's source always attaches
+ * on its own node's right edge and its target always on its own node's left edge, regardless of
+ * which of the two nodes happens to sit further left on canvas. Comparing box positions to decide
+ * which edge to use would be wrong the moment a link ever ran against the layout's usual
+ * left-to-right column order (autoDistribute keeps it that way today, but nothing here should
+ * depend on that to stay correct).
  *
  * Returns null for a link that isn't routable geometry (either end missing, or both ends on the
  * same node). Shared with the whole-diagram overlap checker (see `checkNoLinkCrossesAnyNode` in
@@ -385,16 +392,13 @@ export function getLinkAnchors(link: NodeLinkModel): LinkAnchors | null {
     if (!sourceNode || !targetNode || sourceNode === targetNode) {
         return null;
     }
-    const sourceBox = getNodeBoundingBox(sourceNode);
-    const targetBox = getNodeBoundingBox(targetNode);
-    const sourceIsLeft = sourceBox.left <= targetBox.left;
     return {
         source: {
-            x: sourceIsLeft ? sourceBox.right : sourceBox.left,
+            x: getNodeBoundingBox(sourceNode).right,
             y: getPortAnchorY(sourceNode, link.getSourcePort()),
         },
         target: {
-            x: sourceIsLeft ? targetBox.left : targetBox.right,
+            x: getNodeBoundingBox(targetNode).left,
             y: getPortAnchorY(targetNode, link.getTargetPort()),
         },
     };

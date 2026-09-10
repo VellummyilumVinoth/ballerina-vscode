@@ -26,6 +26,7 @@ import {
     createNodesLink,
     createPortNodeLink,
     generateEngine,
+    getLinkAnchors,
     getNodeBoundingBox,
     getPortAnchorY,
     LINK_DETOUR_MARGIN,
@@ -382,6 +383,28 @@ describe("getPortAnchorY", () => {
         aiNode.setPosition(0, 0);
 
         expect(getPortAnchorY(aiNode, aiNode.getFunctionPort(decisionFn))).toBe(96); // row 0
+    });
+});
+
+describe("getLinkAnchors", () => {
+    test("anchors a link by fixed port side, not by which node sits further left on canvas", () => {
+        // Every node widget renders "in" as the first child of its row (so it's always on that
+        // node's own left edge) and "out" as the last (always on its own right edge) - regardless
+        // of where the node sits on the canvas. Position the automation (source) to the RIGHT of
+        // the connection (target) here specifically to catch a regression back to picking the
+        // anchor edge by relative box position: that would anchor source at its own LEFT edge and
+        // target at its own RIGHT edge instead, the wrong sides for where the ports actually are.
+        const automationNode = new EntryNodeModel(makeAutomation("automation-1"), "automation");
+        automationNode.setPosition(500, 0); // box: [500, 740] - to the right of the connection
+
+        const connectionNode = new ConnectionNodeModel(makeConnection("connection-1"));
+        connectionNode.setPosition(0, 0); // box: [0, CON_NODE_HEIGHT]
+
+        const link = createNodesLink(automationNode, connectionNode) as NodeLinkModel;
+        const anchors = getLinkAnchors(link);
+
+        expect(anchors.source.x).toBe(740); // automation's own right edge (its out port)
+        expect(anchors.target.x).toBe(0); // connection's own left edge (its in port)
     });
 });
 
