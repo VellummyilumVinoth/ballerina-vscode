@@ -490,6 +490,13 @@ export function avoidLinkObstructions(engine: DiagramEngine) {
             .filter((node) => node !== link.sourceNode && node !== link.targetNode)
             .map(getNodeBoundingBox)
             .filter((box) => box.right > anchorLeft.x && box.left < anchorRight.x);
+        if (obstructions.length === 0) {
+            // The common case - most links span adjacent columns with nothing between them - so
+            // this is checked before sampling the curve below, not just via `.some()` on an empty
+            // array (which would short-circuit to the same result either way, but only after
+            // paying for the sample).
+            return;
+        }
 
         // Sampled once and reused for every box below, and again for `naiveY` - it's the same
         // curve throughout, and sampling is the expensive part of this pass.
