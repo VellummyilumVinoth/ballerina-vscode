@@ -134,6 +134,12 @@ function LibraryDetailsForm({
     const visibleError = (error: string | null, field: ValidatedLibraryField) =>
         touchedFields[field] || hasAttemptedSubmit ? error || "" : "";
 
+    useEffect(() => {
+        if (hasAttemptedSubmit && (libraryNameError || packageNameError || orgNameError)) {
+            setShowAdvancedOptions(true);
+        }
+    }, [hasAttemptedSubmit, libraryNameError, packageNameError, orgNameError]);
+
     return (
         <LibraryDetails>
             <FormStyles.Row>
