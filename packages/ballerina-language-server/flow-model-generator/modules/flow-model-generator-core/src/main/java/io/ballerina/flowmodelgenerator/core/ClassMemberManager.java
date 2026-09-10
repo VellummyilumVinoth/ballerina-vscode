@@ -484,7 +484,8 @@ public final class ClassMemberManager {
         String org = declaration.orgName().map(value -> value.orgName().text().trim()).orElse("");
         // Unescape so an import read from source (reserved-keyword segments carry the leading quote) compares
         // equal to the raw module id the model stores.
-        String module = CommonUtils.unescapeModuleName(declaration.moduleName().stream().map(token -> token.text().trim())
+        String module = CommonUtils.unescapeModuleName(declaration.moduleName().stream()
+                .map(token -> token.text().trim())
                 .reduce((left, right) -> left + "." + right).orElse(""));
         return org.isEmpty() ? module : org + "/" + module;
     }
