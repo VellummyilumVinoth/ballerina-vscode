@@ -391,13 +391,16 @@ exports[`Component Diagram - Snapshot Tests renders ai agent complex correctly: 
                 <div
                   class="css-23"
                 >
-                  <div
-                    class="css-13"
+                  <svg
+                    height="24"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
                   >
-                    <i
-                      class="fw-bi-globe"
+                    <path
+                      d="M1 14.25v-4.5q0-.325.213-.537T1.75 9t.538.213t.212.537V11h2V9.75q0-.325.213-.537T5.25 9t.538.213T6 9.75v4.5q0 .325-.213.538T5.25 15t-.537-.213t-.213-.537V12.5h-2v1.75q0 .325-.213.538T1.75 15t-.537-.213T1 14.25m7.5 0V10.5h-.75q-.325 0-.537-.213T7 9.75t.213-.537T7.75 9h3q.325 0 .538.213t.212.537t-.213.538t-.537.212H10v3.75q0 .325-.213.538T9.25 15t-.537-.213t-.213-.537m5.5 0V10.5h-.75q-.325 0-.537-.213T12.5 9.75t.213-.537T13.25 9h3q.325 0 .538.213T17 9.75t-.213.538t-.537.212h-.75v3.75q0 .325-.213.538T14.75 15t-.537-.213T14 14.25m4 0v-4.5q0-.325.213-.537T18.75 9h2.75q.6 0 1.05.45T23 10.5v1q0 .6-.45 1.05T21.5 13h-2v1.25q0 .325-.213.538T18.75 15t-.537-.213T18 14.25m1.5-2.75h2v-1h-2z"
                     />
-                  </div>
+                  </svg>
                 </div>
                 <div
                   class="css-24"
@@ -1190,13 +1193,16 @@ exports[`Component Diagram - Snapshot Tests renders connections complex correctl
                 <div
                   class="css-23"
                 >
-                  <div
-                    class="css-13"
+                  <svg
+                    height="24"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
                   >
-                    <i
-                      class="fw-bi-globe"
+                    <path
+                      d="M1 14.25v-4.5q0-.325.213-.537T1.75 9t.538.213t.212.537V11h2V9.75q0-.325.213-.537T5.25 9t.538.213T6 9.75v4.5q0 .325-.213.538T5.25 15t-.537-.213t-.213-.537V12.5h-2v1.75q0 .325-.213.538T1.75 15t-.537-.213T1 14.25m7.5 0V10.5h-.75q-.325 0-.537-.213T7 9.75t.213-.537T7.75 9h3q.325 0 .538.213t.212.537t-.213.538t-.537.212H10v3.75q0 .325-.213.538T9.25 15t-.537-.213t-.213-.537m5.5 0V10.5h-.75q-.325 0-.537-.213T12.5 9.75t.213-.537T13.25 9h3q.325 0 .538.213T17 9.75t-.213.538t-.537.212h-.75v3.75q0 .325-.213.538T14.75 15t-.537-.213T14 14.25m4 0v-4.5q0-.325.213-.537T18.75 9h2.75q.6 0 1.05.45T23 10.5v1q0 .6-.45 1.05T21.5 13h-2v1.25q0 .325-.213.538T18.75 15t-.537-.213T18 14.25m1.5-2.75h2v-1h-2z"
                     />
-                  </div>
+                  </svg>
                 </div>
                 <div
                   class="css-24"
@@ -2297,13 +2303,16 @@ exports[`Component Diagram - Snapshot Tests renders graphql complex correctly: g
                 <div
                   class="css-23"
                 >
-                  <div
-                    class="css-13"
+                  <svg
+                    height="24"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
                   >
-                    <i
-                      class="fw-bi-globe"
+                    <path
+                      d="M1 14.25v-4.5q0-.325.213-.537T1.75 9t.538.213t.212.537V11h2V9.75q0-.325.213-.537T5.25 9t.538.213T6 9.75v4.5q0 .325-.213.538T5.25 15t-.537-.213t-.213-.537V12.5h-2v1.75q0 .325-.213.538T1.75 15t-.537-.213T1 14.25m7.5 0V10.5h-.75q-.325 0-.537-.213T7 9.75t.213-.537T7.75 9h3q.325 0 .538.213t.212.537t-.213.538t-.537.212H10v3.75q0 .325-.213.538T9.25 15t-.537-.213t-.213-.537m5.5 0V10.5h-.75q-.325 0-.537-.213T12.5 9.75t.213-.537T13.25 9h3q.325 0 .538.213T17 9.75t-.213.538t-.537.212h-.75v3.75q0 .325-.213.538T14.75 15t-.537-.213T14 14.25m4 0v-4.5q0-.325.213-.537T18.75 9h2.75q.6 0 1.05.45T23 10.5v1q0 .6-.45 1.05T21.5 13h-2v1.25q0 .325-.213.538T18.75 15t-.537-.213T18 14.25m1.5-2.75h2v-1h-2z"
                     />
-                  </div>
+                  </svg>
                 </div>
                 <div
                   class="css-24"
@@ -3356,13 +3365,16 @@ exports[`Component Diagram - Snapshot Tests renders multiple connections complex
                 <div
                   class="css-23"
                 >
-                  <div
-                    class="css-13"
+                  <svg
+                    height="24"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
                   >
-                    <i
-                      class="fw-bi-globe"
+                    <path
+                      d="M1 14.25v-4.5q0-.325.213-.537T1.75 9t.538.213t.212.537V11h2V9.75q0-.325.213-.537T5.25 9t.538.213T6 9.75v4.5q0 .325-.213.538T5.25 15t-.537-.213t-.213-.537V12.5h-2v1.75q0 .325-.213.538T1.75 15t-.537-.213T1 14.25m7.5 0V10.5h-.75q-.325 0-.537-.213T7 9.75t.213-.537T7.75 9h3q.325 0 .538.213t.212.537t-.213.538t-.537.212H10v3.75q0 .325-.213.538T9.25 15t-.537-.213t-.213-.537m5.5 0V10.5h-.75q-.325 0-.537-.213T12.5 9.75t.213-.537T13.25 9h3q.325 0 .538.213T17 9.75t-.213.538t-.537.212h-.75v3.75q0 .325-.213.538T14.75 15t-.537-.213T14 14.25m4 0v-4.5q0-.325.213-.537T18.75 9h2.75q.6 0 1.05.45T23 10.5v1q0 .6-.45 1.05T21.5 13h-2v1.25q0 .325-.213.538T18.75 15t-.537-.213T18 14.25m1.5-2.75h2v-1h-2z"
                     />
-                  </div>
+                  </svg>
                 </div>
                 <div
                   class="css-24"
@@ -3811,12 +3823,12 @@ exports[`Component Diagram - Snapshot Tests renders multiple services correctly:
 .css-33 >* {height: 100%; min-height: 100%; width: 100%;}
 .css-33 svg:first-child {z-index: 1;}
 .css-33 {height: 100%; -webkit-background-size: 16px 16px; background-size: 16px 16px; display: flex; background-image: radial-gradient(var(--vscode-editor-inactiveSelectionBackground) 10%, transparent 0px); font-family: "GilmerRegular";}
-.css-16 {font-size: 12px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; color: var(--vscode-foreground); opacity: 0.7;}
-.css-22 {display: flex; -webkit-flex-direction: row; -ms-flex-direction: row; flex-direction: row; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; width: 100%;}
+.css-15 {font-size: 12px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; color: var(--vscode-foreground); opacity: 0.7;}
+.css-21 {display: flex; -webkit-flex-direction: row; -ms-flex-direction: row; flex-direction: row; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; width: 100%;}
 .css-9 {margin-top: -3px;}
 .css-5 {position: relative; cursor: move; overflow: hidden;}
 .css-8 {display: flex; -webkit-flex-direction: row; -ms-flex-direction: row; flex-direction: row; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; color: var(--vscode-foreground);}
-.css-29 {border-radius: 5px;}
+.css-28 {border-radius: 5px;}
 .css-10 {display: flex; -webkit-flex-direction: column; -ms-flex-direction: column; flex-direction: column; -webkit-box-pack: start; -ms-flex-pack: start; -webkit-justify-content: flex-start; justify-content: flex-start; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; gap: 8px; width: 100%; position: relative; border: 1.5px solid color-mix(in srgb, var(--vscode-foreground) 70%, transparent); border-radius: 8px; background-color: var(--vscode-menu-background); padding: 8px;}
 .css-1 {display: flex; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; padding: 8px; border-radius: 4px; background-color: var(--vscode-sideBar-background); fill: var(--vscode-foreground); width: 32px; height: 32px; cursor: pointer;}
 .css-1:active {background-color: var(--vscode-editor-inactiveSelectionBackground);}
@@ -3843,7 +3855,7 @@ exports[`Component Diagram - Snapshot Tests renders multiple services correctly:
 .css-30 {display: flex; -webkit-flex-direction: column; -ms-flex-direction: column; flex-direction: column; -webkit-align-items: flex-end; -webkit-box-align: flex-end; -ms-flex-align: flex-end; align-items: flex-end; gap: 6px;}
 .css-26 {display: flex; -webkit-flex-direction: row-reverse; -ms-flex-direction: row-reverse; flex-direction: row-reverse; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; gap: 12px; cursor: pointer;}
 .css-2 {height: 16px; width: 16px; cursor: pointer; font-size: 16px;}
-.css-31 {font-size: 14px; max-width: 136px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: "GilmerMedium"; color: var(--vscode-foreground); opacity: 1;}
+.css-30 {font-size: 14px; max-width: 136px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: "GilmerMedium"; color: var(--vscode-foreground); opacity: 1;}
 .css-12 >div:first-child {width: 24px; height: 24px; font-size: 24px;}
 .css-12 svg {fill: var(--vscode-foreground);}
 .css-12 {padding: 4px; max-width: 32px;}
@@ -3854,9 +3866,8 @@ exports[`Component Diagram - Snapshot Tests renders multiple services correctly:
 .css-11:hover {background-color: var(--vscode-sideBar-background); border-radius: 8px;}
 .css-21 {font-size: 12px; text-transform: uppercase; font-family: "GilmerBold"; background-color: #49cc90; color: #FFF; padding: 4px 8px; border-radius: 4px; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; min-width: 60px; text-align: center; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; font-weight: bold;}
 .css-7 {position: absolute; -webkit-touch-callout: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; cursor: move; pointer-events: all;}
-.css-13 {height: 16px; width: 14px; cursor: pointer;}
-.css-14 {display: flex; -webkit-flex-direction: column; -ms-flex-direction: column; flex-direction: column; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; -webkit-align-items: flex-start; -webkit-box-align: flex-start; -ms-flex-align: flex-start; align-items: flex-start; gap: 6px; width: 100%; cursor: pointer;}
-.css-25 {display: flex; -webkit-flex-direction: row; -ms-flex-direction: row; flex-direction: row; -webkit-box-pack: end; -ms-flex-pack: end; -webkit-justify-content: flex-end; justify-content: flex-end; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; height: 64px; width: 200px; color: var(--vscode-foreground);}
+.css-13 {display: flex; -webkit-flex-direction: column; -ms-flex-direction: column; flex-direction: column; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; -webkit-align-items: flex-start; -webkit-box-align: flex-start; -ms-flex-align: flex-start; align-items: flex-start; gap: 6px; width: 100%; cursor: pointer;}
+.css-24 {display: flex; -webkit-flex-direction: row; -ms-flex-direction: row; flex-direction: row; -webkit-box-pack: end; -ms-flex-pack: end; -webkit-justify-content: flex-end; justify-content: flex-end; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; height: 64px; width: 200px; color: var(--vscode-foreground);}
 .css-0 {display: flex; -webkit-flex-direction: column; -ms-flex-direction: column; flex-direction: column; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; gap: 8px; position: absolute; left: 12px; bottom: 12px; z-index: 1000;}
 
 /* DOM */
@@ -4004,28 +4015,31 @@ exports[`Component Diagram - Snapshot Tests renders multiple services correctly:
                 <div
                   class="css-12"
                 >
-                  <div
-                    class="css-13"
+                  <svg
+                    height="24"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
                   >
-                    <i
-                      class="fw-bi-globe"
+                    <path
+                      d="M1 14.25v-4.5q0-.325.213-.537T1.75 9t.538.213t.212.537V11h2V9.75q0-.325.213-.537T5.25 9t.538.213T6 9.75v4.5q0 .325-.213.538T5.25 15t-.537-.213t-.213-.537V12.5h-2v1.75q0 .325-.213.538T1.75 15t-.537-.213T1 14.25m7.5 0V10.5h-.75q-.325 0-.537-.213T7 9.75t.213-.537T7.75 9h3q.325 0 .538.213t.212.537t-.213.538t-.537.212H10v3.75q0 .325-.213.538T9.25 15t-.537-.213t-.213-.537m5.5 0V10.5h-.75q-.325 0-.537-.213T12.5 9.75t.213-.537T13.25 9h3q.325 0 .538.213T17 9.75t-.213.538t-.537.212h-.75v3.75q0 .325-.213.538T14.75 15t-.537-.213T14 14.25m4 0v-4.5q0-.325.213-.537T18.75 9h2.75q.6 0 1.05.45T23 10.5v1q0 .6-.45 1.05T21.5 13h-2v1.25q0 .325-.213.538T18.75 15t-.537-.213T18 14.25m1.5-2.75h2v-1h-2z"
                     />
-                  </div>
+                  </svg>
                 </div>
                 <div
-                  class="css-14"
+                  class="css-13"
                 >
                   <div
-                    class="css-15"
+                    class="css-14"
                   />
                   <div
-                    class="css-16"
+                    class="css-15"
                   >
                     http:Service
                   </div>
                 </div>
                 <div
-                  class="css-17 css-18"
+                  class="css-16 css-17"
                 >
                   <vscode-button
                     data-testid="entry-node-service-menu"
@@ -4052,16 +4066,16 @@ exports[`Component Diagram - Snapshot Tests renders multiple services correctly:
                 class="css-8"
               >
                 <div
-                  class="css-19"
+                  class="css-18"
                 >
                   <div
-                    class="css-20"
+                    class="css-19"
                     color="#3d7eff"
                   >
                     get
                   </div>
                   <div
-                    class="css-15"
+                    class="css-14"
                   >
                     /greeting
                   </div>
@@ -4075,16 +4089,16 @@ exports[`Component Diagram - Snapshot Tests renders multiple services correctly:
                 class="css-8"
               >
                 <div
-                  class="css-19"
+                  class="css-18"
                 >
                   <div
-                    class="css-21"
+                    class="css-20"
                     color="#49cc90"
                   >
                     post
                   </div>
                   <div
-                    class="css-15"
+                    class="css-14"
                   >
                     /users
                   </div>
@@ -4095,10 +4109,10 @@ exports[`Component Diagram - Snapshot Tests renders multiple services correctly:
                 />
               </div>
               <div
-                class="css-22"
+                class="css-21"
               >
                 <div
-                  class="css-23"
+                  class="css-22"
                 >
                   Show More Resources
                 </div>
@@ -4110,7 +4124,7 @@ exports[`Component Diagram - Snapshot Tests renders multiple services correctly:
             </div>
             <div />
             <div
-              class="port css-24"
+              class="port css-23"
               data-name="out"
             />
           </div>
@@ -4120,20 +4134,20 @@ exports[`Component Diagram - Snapshot Tests renders multiple services correctly:
           style="top: 100px; left: 250px;"
         >
           <div
-            class="css-25"
+            class="css-24"
           >
             <div
-              class="css-26"
+              class="css-25"
             >
               <div
-                class="css-27"
+                class="css-26"
               >
                 <div
                   class="port css-9"
                   data-name="in"
                 />
                 <div
-                  class="css-28"
+                  class="css-27"
                 >
                   <svg
                     height="24"
@@ -4153,12 +4167,12 @@ exports[`Component Diagram - Snapshot Tests renders multiple services correctly:
                   </svg>
                 </div>
                 <div
-                  class="port css-24"
+                  class="port css-23"
                   data-name="out"
                 />
               </div>
               <div
-                class="css-29 css-18"
+                class="css-28 css-17"
               >
                 <vscode-button>
                   <svg
@@ -4179,13 +4193,13 @@ exports[`Component Diagram - Snapshot Tests renders multiple services correctly:
                 </vscode-button>
               </div>
               <div
-                class="css-30"
+                class="css-29"
               >
                 <div
-                  class="css-31"
+                  class="css-30"
                 />
                 <div
-                  class="css-32"
+                  class="css-31"
                 >
                   http:Listener
                 </div>
@@ -4431,11 +4445,11 @@ exports[`Component Diagram - Snapshot Tests renders simple service correctly: si
 .css-31 >* {height: 100%; min-height: 100%; width: 100%;}
 .css-31 svg:first-child {z-index: 1;}
 .css-31 {height: 100%; -webkit-background-size: 16px 16px; background-size: 16px 16px; display: flex; background-image: radial-gradient(var(--vscode-editor-inactiveSelectionBackground) 10%, transparent 0px); font-family: "GilmerRegular";}
-.css-16 {font-size: 12px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; color: var(--vscode-foreground); opacity: 0.7;}
+.css-15 {font-size: 12px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; color: var(--vscode-foreground); opacity: 0.7;}
 .css-9 {margin-top: -3px;}
 .css-5 {position: relative; cursor: move; overflow: hidden;}
 .css-8 {display: flex; -webkit-flex-direction: row; -ms-flex-direction: row; flex-direction: row; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; color: var(--vscode-foreground);}
-.css-27 {border-radius: 5px;}
+.css-26 {border-radius: 5px;}
 .css-10 {display: flex; -webkit-flex-direction: column; -ms-flex-direction: column; flex-direction: column; -webkit-box-pack: start; -ms-flex-pack: start; -webkit-justify-content: flex-start; justify-content: flex-start; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; gap: 8px; width: 100%; position: relative; border: 1.5px solid color-mix(in srgb, var(--vscode-foreground) 70%, transparent); border-radius: 8px; background-color: var(--vscode-menu-background); padding: 8px;}
 .css-1 {display: flex; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; padding: 8px; border-radius: 4px; background-color: var(--vscode-sideBar-background); fill: var(--vscode-foreground); width: 32px; height: 32px; cursor: pointer;}
 .css-1:active {background-color: var(--vscode-editor-inactiveSelectionBackground);}
@@ -4460,7 +4474,7 @@ exports[`Component Diagram - Snapshot Tests renders simple service correctly: si
 .css-28 {display: flex; -webkit-flex-direction: column; -ms-flex-direction: column; flex-direction: column; -webkit-align-items: flex-end; -webkit-box-align: flex-end; -ms-flex-align: flex-end; align-items: flex-end; gap: 6px;}
 .css-24 {display: flex; -webkit-flex-direction: row-reverse; -ms-flex-direction: row-reverse; flex-direction: row-reverse; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; gap: 12px; cursor: pointer;}
 .css-2 {height: 16px; width: 16px; cursor: pointer; font-size: 16px;}
-.css-29 {font-size: 14px; max-width: 136px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: "GilmerMedium"; color: var(--vscode-foreground); opacity: 1;}
+.css-28 {font-size: 14px; max-width: 136px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: "GilmerMedium"; color: var(--vscode-foreground); opacity: 1;}
 .css-12 >div:first-child {width: 24px; height: 24px; font-size: 24px;}
 .css-12 svg {fill: var(--vscode-foreground);}
 .css-12 {padding: 4px; max-width: 32px;}
@@ -4471,9 +4485,8 @@ exports[`Component Diagram - Snapshot Tests renders simple service correctly: si
 .css-11:hover {background-color: var(--vscode-sideBar-background); border-radius: 8px;}
 .css-21 {font-size: 12px; text-transform: uppercase; font-family: "GilmerBold"; background-color: #49cc90; color: #FFF; padding: 4px 8px; border-radius: 4px; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; min-width: 60px; text-align: center; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; font-weight: bold;}
 .css-7 {position: absolute; -webkit-touch-callout: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; cursor: move; pointer-events: all;}
-.css-13 {height: 16px; width: 14px; cursor: pointer;}
-.css-14 {display: flex; -webkit-flex-direction: column; -ms-flex-direction: column; flex-direction: column; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; -webkit-align-items: flex-start; -webkit-box-align: flex-start; -ms-flex-align: flex-start; align-items: flex-start; gap: 6px; width: 100%; cursor: pointer;}
-.css-23 {display: flex; -webkit-flex-direction: row; -ms-flex-direction: row; flex-direction: row; -webkit-box-pack: end; -ms-flex-pack: end; -webkit-justify-content: flex-end; justify-content: flex-end; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; height: 64px; width: 200px; color: var(--vscode-foreground);}
+.css-13 {display: flex; -webkit-flex-direction: column; -ms-flex-direction: column; flex-direction: column; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; -webkit-align-items: flex-start; -webkit-box-align: flex-start; -ms-flex-align: flex-start; align-items: flex-start; gap: 6px; width: 100%; cursor: pointer;}
+.css-22 {display: flex; -webkit-flex-direction: row; -ms-flex-direction: row; flex-direction: row; -webkit-box-pack: end; -ms-flex-pack: end; -webkit-justify-content: flex-end; justify-content: flex-end; -webkit-align-items: center; -webkit-box-align: center; -ms-flex-align: center; align-items: center; height: 64px; width: 200px; color: var(--vscode-foreground);}
 .css-0 {display: flex; -webkit-flex-direction: column; -ms-flex-direction: column; flex-direction: column; -webkit-box-pack: center; -ms-flex-pack: center; -webkit-justify-content: center; justify-content: center; gap: 8px; position: absolute; left: 12px; bottom: 12px; z-index: 1000;}
 
 /* DOM */
@@ -4621,28 +4634,31 @@ exports[`Component Diagram - Snapshot Tests renders simple service correctly: si
                 <div
                   class="css-12"
                 >
-                  <div
-                    class="css-13"
+                  <svg
+                    height="24"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
                   >
-                    <i
-                      class="fw-bi-globe"
+                    <path
+                      d="M1 14.25v-4.5q0-.325.213-.537T1.75 9t.538.213t.212.537V11h2V9.75q0-.325.213-.537T5.25 9t.538.213T6 9.75v4.5q0 .325-.213.538T5.25 15t-.537-.213t-.213-.537V12.5h-2v1.75q0 .325-.213.538T1.75 15t-.537-.213T1 14.25m7.5 0V10.5h-.75q-.325 0-.537-.213T7 9.75t.213-.537T7.75 9h3q.325 0 .538.213t.212.537t-.213.538t-.537.212H10v3.75q0 .325-.213.538T9.25 15t-.537-.213t-.213-.537m5.5 0V10.5h-.75q-.325 0-.537-.213T12.5 9.75t.213-.537T13.25 9h3q.325 0 .538.213T17 9.75t-.213.538t-.537.212h-.75v3.75q0 .325-.213.538T14.75 15t-.537-.213T14 14.25m4 0v-4.5q0-.325.213-.537T18.75 9h2.75q.6 0 1.05.45T23 10.5v1q0 .6-.45 1.05T21.5 13h-2v1.25q0 .325-.213.538T18.75 15t-.537-.213T18 14.25m1.5-2.75h2v-1h-2z"
                     />
-                  </div>
+                  </svg>
                 </div>
                 <div
-                  class="css-14"
+                  class="css-13"
                 >
                   <div
-                    class="css-15"
+                    class="css-14"
                   />
                   <div
-                    class="css-16"
+                    class="css-15"
                   >
                     http:Service
                   </div>
                 </div>
                 <div
-                  class="css-17 css-18"
+                  class="css-16 css-17"
                 >
                   <vscode-button
                     data-testid="entry-node-service-menu"
@@ -4669,16 +4685,16 @@ exports[`Component Diagram - Snapshot Tests renders simple service correctly: si
                 class="css-8"
               >
                 <div
-                  class="css-19"
+                  class="css-18"
                 >
                   <div
-                    class="css-20"
+                    class="css-19"
                     color="#3d7eff"
                   >
                     get
                   </div>
                   <div
-                    class="css-15"
+                    class="css-14"
                   >
                     /greeting
                   </div>
@@ -4692,16 +4708,16 @@ exports[`Component Diagram - Snapshot Tests renders simple service correctly: si
                 class="css-8"
               >
                 <div
-                  class="css-19"
+                  class="css-18"
                 >
                   <div
-                    class="css-21"
+                    class="css-20"
                     color="#49cc90"
                   >
                     post
                   </div>
                   <div
-                    class="css-15"
+                    class="css-14"
                   >
                     /users
                   </div>
@@ -4714,7 +4730,7 @@ exports[`Component Diagram - Snapshot Tests renders simple service correctly: si
             </div>
             <div />
             <div
-              class="port css-22"
+              class="port css-21"
               data-name="out"
             />
           </div>
@@ -4724,20 +4740,20 @@ exports[`Component Diagram - Snapshot Tests renders simple service correctly: si
           style="top: 100px; left: 250px;"
         >
           <div
-            class="css-23"
+            class="css-22"
           >
             <div
-              class="css-24"
+              class="css-23"
             >
               <div
-                class="css-25"
+                class="css-24"
               >
                 <div
                   class="port css-9"
                   data-name="in"
                 />
                 <div
-                  class="css-26"
+                  class="css-25"
                 >
                   <svg
                     height="24"
@@ -4757,12 +4773,12 @@ exports[`Component Diagram - Snapshot Tests renders simple service correctly: si
                   </svg>
                 </div>
                 <div
-                  class="port css-22"
+                  class="port css-21"
                   data-name="out"
                 />
               </div>
               <div
-                class="css-27 css-18"
+                class="css-26 css-17"
               >
                 <vscode-button>
                   <svg
@@ -4783,13 +4799,13 @@ exports[`Component Diagram - Snapshot Tests renders simple service correctly: si
                 </vscode-button>
               </div>
               <div
-                class="css-28"
+                class="css-27"
               >
                 <div
-                  class="css-29"
+                  class="css-28"
                 />
                 <div
-                  class="css-30"
+                  class="css-29"
                 >
                   http:Listener
                 </div>
@@ -5683,7 +5699,7 @@ exports[`Component Diagram - Snapshot Tests renders stacked workflows overlap co
                 class="css-20"
               >
                 <div
-                  class="css-31"
+                  class="css-30"
                 >
                   <div
                     class="css-32"

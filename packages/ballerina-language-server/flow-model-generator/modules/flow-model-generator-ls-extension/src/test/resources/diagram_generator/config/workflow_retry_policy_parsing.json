@@ -50,7 +50,7 @@
         "metadata": {
           "label": "lookupBooking",
           "description": "Look up a booking activity",
-          "icon": "https://bcentral-packageicons.azureedge.net/images/ballerina_http_2.16.6.png"
+          "icon": "https://bcentral-packageicons.azureedge.net/images/ballerina_http_2.17.1.png"
         },
         "codedata": {
           "node": "CONNECTION_ACTIVITY_CALL",
@@ -86,7 +86,72 @@
                 "selected": false
               }
             ],
-            "value": {},
+            "value": {
+              "stepId": {
+                "metadata": {
+                  "label": "Step Id",
+                  "description": "Identity of this step within the workflow, reported by every execution of it and\nmatching a node of the descriptor's graph — so a run can be traced back to the\nexact call that ran, the one in the `if` arm rather than the `else`. Name it\n(`stepId = \"charge-card\"`) for a step you want to follow: a chosen id survives\nedits that shift the generated `<activity>#<ordinal>`. Must be a constant string;\nan id another step already has is suffixed, with a warning."
+                },
+                "types": [
+                  {
+                    "fieldType": "TEXT",
+                    "ballerinaType": "string",
+                    "selected": false
+                  },
+                  {
+                    "fieldType": "EXPRESSION",
+                    "ballerinaType": "string?",
+                    "selected": false
+                  }
+                ],
+                "placeholder": "()",
+                "optional": true,
+                "editable": true,
+                "advanced": false,
+                "hidden": false,
+                "codedata": {
+                  "kind": "DEFAULTABLE",
+                  "originalName": "stepId"
+                },
+                "defaultValue": "()"
+              },
+              "additionalValues": {
+                "metadata": {
+                  "label": "Additional Values",
+                  "description": "Capture key value pairs"
+                },
+                "types": [
+                  {
+                    "fieldType": "REPEATABLE_MAP",
+                    "ballerinaType": "anydata",
+                    "template": {
+                      "types": [
+                        {
+                          "fieldType": "EXPRESSION",
+                          "ballerinaType": "anydata",
+                          "selected": false
+                        }
+                      ],
+                      "optional": false,
+                      "editable": false,
+                      "advanced": false,
+                      "hidden": false
+                    },
+                    "selected": true
+                  }
+                ],
+                "value": {},
+                "placeholder": "{}",
+                "optional": true,
+                "editable": true,
+                "advanced": false,
+                "hidden": false,
+                "codedata": {
+                  "kind": "INCLUDED_RECORD_REST",
+                  "originalName": "Additional Values"
+                }
+              }
+            },
             "optional": false,
             "editable": false,
             "advanced": false,
@@ -105,7 +170,7 @@
                     "packageName": "http",
                     "object": "Client",
                     "symbol": "init",
-                    "version": "2.16.6"
+                    "version": "2.17.1"
                   },
                   "addNewConnectionLabel": "Add new http connection"
                 }
@@ -302,6 +367,70 @@
                   "editable": true,
                   "advanced": false,
                   "hidden": false
+                },
+                "retryTitle": {
+                  "metadata": {
+                    "label": "Title",
+                    "description": "Short summary shown in the reviewer's inbox. Defaults to a phrase naming the activity being reviewed."
+                  },
+                  "types": [
+                    {
+                      "fieldType": "TEXT",
+                      "ballerinaType": "string",
+                      "selected": true
+                    },
+                    {
+                      "fieldType": "EXPRESSION",
+                      "ballerinaType": "string",
+                      "selected": false
+                    }
+                  ],
+                  "value": "",
+                  "optional": true,
+                  "editable": true,
+                  "advanced": false,
+                  "hidden": false
+                },
+                "retryDescription": {
+                  "metadata": {
+                    "label": "Description",
+                    "description": "Context shown with the decision. Defaults to a description of the failure and the outcomes available."
+                  },
+                  "types": [
+                    {
+                      "fieldType": "TEXT",
+                      "ballerinaType": "string",
+                      "selected": true
+                    },
+                    {
+                      "fieldType": "EXPRESSION",
+                      "ballerinaType": "string",
+                      "selected": false
+                    }
+                  ],
+                  "value": "",
+                  "optional": true,
+                  "editable": true,
+                  "advanced": false,
+                  "hidden": false
+                },
+                "retryTimeout": {
+                  "metadata": {
+                    "label": "Timeout",
+                    "description": "How long to wait for a decision, e.g. {hours: 4}. Empty waits indefinitely."
+                  },
+                  "types": [
+                    {
+                      "fieldType": "EXPRESSION",
+                      "ballerinaType": "workflow:Duration",
+                      "selected": true
+                    }
+                  ],
+                  "value": "",
+                  "optional": true,
+                  "editable": true,
+                  "advanced": false,
+                  "hidden": false
                 }
               }
             },
@@ -362,12 +491,76 @@
           "retryUserRoles": {
             "metadata": {
               "label": "Reviewer Roles",
-              "description": "Role(s) permitted to decide the retry review"
+              "description": "Role(s) permitted to decide the human review, e.g. \"manager\" or [\"finance\", \"manager\"]. Leave empty to allow any role."
             },
             "types": [
               {
                 "fieldType": "EXPRESSION",
                 "ballerinaType": "string|string[]",
+                "selected": true
+              }
+            ],
+            "value": "",
+            "optional": true,
+            "editable": true,
+            "advanced": false,
+            "hidden": true
+          },
+          "retryTitle": {
+            "metadata": {
+              "label": "Title",
+              "description": "Short summary shown in the reviewer's inbox. Defaults to a phrase naming the activity being reviewed."
+            },
+            "types": [
+              {
+                "fieldType": "TEXT",
+                "ballerinaType": "string",
+                "selected": true
+              },
+              {
+                "fieldType": "EXPRESSION",
+                "ballerinaType": "string",
+                "selected": false
+              }
+            ],
+            "value": "",
+            "optional": true,
+            "editable": true,
+            "advanced": false,
+            "hidden": true
+          },
+          "retryDescription": {
+            "metadata": {
+              "label": "Description",
+              "description": "Context shown with the decision. Defaults to a description of the failure and the outcomes available."
+            },
+            "types": [
+              {
+                "fieldType": "TEXT",
+                "ballerinaType": "string",
+                "selected": true
+              },
+              {
+                "fieldType": "EXPRESSION",
+                "ballerinaType": "string",
+                "selected": false
+              }
+            ],
+            "value": "",
+            "optional": true,
+            "editable": true,
+            "advanced": false,
+            "hidden": true
+          },
+          "retryTimeout": {
+            "metadata": {
+              "label": "Timeout",
+              "description": "How long to wait for a decision, e.g. {hours: 4}. Empty waits indefinitely."
+            },
+            "types": [
+              {
+                "fieldType": "EXPRESSION",
+                "ballerinaType": "workflow:Duration",
                 "selected": true
               }
             ],
@@ -470,7 +663,7 @@
         "metadata": {
           "label": "lookupBooking",
           "description": "Look up a booking activity",
-          "icon": "https://bcentral-packageicons.azureedge.net/images/ballerina_http_2.16.6.png"
+          "icon": "https://bcentral-packageicons.azureedge.net/images/ballerina_http_2.17.1.png"
         },
         "codedata": {
           "node": "CONNECTION_ACTIVITY_CALL",
@@ -506,7 +699,72 @@
                 "selected": false
               }
             ],
-            "value": {},
+            "value": {
+              "stepId": {
+                "metadata": {
+                  "label": "Step Id",
+                  "description": "Identity of this step within the workflow, reported by every execution of it and\nmatching a node of the descriptor's graph — so a run can be traced back to the\nexact call that ran, the one in the `if` arm rather than the `else`. Name it\n(`stepId = \"charge-card\"`) for a step you want to follow: a chosen id survives\nedits that shift the generated `<activity>#<ordinal>`. Must be a constant string;\nan id another step already has is suffixed, with a warning."
+                },
+                "types": [
+                  {
+                    "fieldType": "TEXT",
+                    "ballerinaType": "string",
+                    "selected": false
+                  },
+                  {
+                    "fieldType": "EXPRESSION",
+                    "ballerinaType": "string?",
+                    "selected": false
+                  }
+                ],
+                "placeholder": "()",
+                "optional": true,
+                "editable": true,
+                "advanced": false,
+                "hidden": false,
+                "codedata": {
+                  "kind": "DEFAULTABLE",
+                  "originalName": "stepId"
+                },
+                "defaultValue": "()"
+              },
+              "additionalValues": {
+                "metadata": {
+                  "label": "Additional Values",
+                  "description": "Capture key value pairs"
+                },
+                "types": [
+                  {
+                    "fieldType": "REPEATABLE_MAP",
+                    "ballerinaType": "anydata",
+                    "template": {
+                      "types": [
+                        {
+                          "fieldType": "EXPRESSION",
+                          "ballerinaType": "anydata",
+                          "selected": false
+                        }
+                      ],
+                      "optional": false,
+                      "editable": false,
+                      "advanced": false,
+                      "hidden": false
+                    },
+                    "selected": true
+                  }
+                ],
+                "value": {},
+                "placeholder": "{}",
+                "optional": true,
+                "editable": true,
+                "advanced": false,
+                "hidden": false,
+                "codedata": {
+                  "kind": "INCLUDED_RECORD_REST",
+                  "originalName": "Additional Values"
+                }
+              }
+            },
             "optional": false,
             "editable": false,
             "advanced": false,
@@ -525,7 +783,7 @@
                     "packageName": "http",
                     "object": "Client",
                     "symbol": "init",
-                    "version": "2.16.6"
+                    "version": "2.17.1"
                   },
                   "addNewConnectionLabel": "Add new http connection"
                 }
@@ -726,6 +984,70 @@
                   "editable": true,
                   "advanced": false,
                   "hidden": false
+                },
+                "retryTitle": {
+                  "metadata": {
+                    "label": "Title",
+                    "description": "Short summary shown in the reviewer's inbox. Defaults to a phrase naming the activity being reviewed."
+                  },
+                  "types": [
+                    {
+                      "fieldType": "TEXT",
+                      "ballerinaType": "string",
+                      "selected": true
+                    },
+                    {
+                      "fieldType": "EXPRESSION",
+                      "ballerinaType": "string",
+                      "selected": false
+                    }
+                  ],
+                  "value": "",
+                  "optional": true,
+                  "editable": true,
+                  "advanced": false,
+                  "hidden": false
+                },
+                "retryDescription": {
+                  "metadata": {
+                    "label": "Description",
+                    "description": "Context shown with the decision. Defaults to a description of the failure and the outcomes available."
+                  },
+                  "types": [
+                    {
+                      "fieldType": "TEXT",
+                      "ballerinaType": "string",
+                      "selected": true
+                    },
+                    {
+                      "fieldType": "EXPRESSION",
+                      "ballerinaType": "string",
+                      "selected": false
+                    }
+                  ],
+                  "value": "",
+                  "optional": true,
+                  "editable": true,
+                  "advanced": false,
+                  "hidden": false
+                },
+                "retryTimeout": {
+                  "metadata": {
+                    "label": "Timeout",
+                    "description": "How long to wait for a decision, e.g. {hours: 4}. Empty waits indefinitely."
+                  },
+                  "types": [
+                    {
+                      "fieldType": "EXPRESSION",
+                      "ballerinaType": "workflow:Duration",
+                      "selected": true
+                    }
+                  ],
+                  "value": "",
+                  "optional": true,
+                  "editable": true,
+                  "advanced": false,
+                  "hidden": false
                 }
               },
               "opsNoRetryReviewers": {}
@@ -792,12 +1114,76 @@
           "retryUserRoles": {
             "metadata": {
               "label": "Reviewer Roles",
-              "description": "Role(s) permitted to decide the retry review"
+              "description": "Role(s) permitted to decide the human review, e.g. \"manager\" or [\"finance\", \"manager\"]. Leave empty to allow any role."
             },
             "types": [
               {
                 "fieldType": "EXPRESSION",
                 "ballerinaType": "string|string[]",
+                "selected": true
+              }
+            ],
+            "value": "",
+            "optional": true,
+            "editable": true,
+            "advanced": false,
+            "hidden": true
+          },
+          "retryTitle": {
+            "metadata": {
+              "label": "Title",
+              "description": "Short summary shown in the reviewer's inbox. Defaults to a phrase naming the activity being reviewed."
+            },
+            "types": [
+              {
+                "fieldType": "TEXT",
+                "ballerinaType": "string",
+                "selected": true
+              },
+              {
+                "fieldType": "EXPRESSION",
+                "ballerinaType": "string",
+                "selected": false
+              }
+            ],
+            "value": "",
+            "optional": true,
+            "editable": true,
+            "advanced": false,
+            "hidden": true
+          },
+          "retryDescription": {
+            "metadata": {
+              "label": "Description",
+              "description": "Context shown with the decision. Defaults to a description of the failure and the outcomes available."
+            },
+            "types": [
+              {
+                "fieldType": "TEXT",
+                "ballerinaType": "string",
+                "selected": true
+              },
+              {
+                "fieldType": "EXPRESSION",
+                "ballerinaType": "string",
+                "selected": false
+              }
+            ],
+            "value": "",
+            "optional": true,
+            "editable": true,
+            "advanced": false,
+            "hidden": true
+          },
+          "retryTimeout": {
+            "metadata": {
+              "label": "Timeout",
+              "description": "How long to wait for a decision, e.g. {hours: 4}. Empty waits indefinitely."
+            },
+            "types": [
+              {
+                "fieldType": "EXPRESSION",
+                "ballerinaType": "workflow:Duration",
                 "selected": true
               }
             ],
@@ -900,7 +1286,7 @@
         "metadata": {
           "label": "Run Child Workflow",
           "description": "childFlow",
-          "icon": "https://bcentral-packageicons.azureedge.net/images/ballerina_workflow_0.8.3.png"
+          "icon": "https://bcentral-packageicons.azureedge.net/images/ballerina_workflow_0.9.0.png"
         },
         "codedata": {
           "node": "CHILD_WORKFLOW_RUN",
@@ -992,6 +1378,34 @@
             },
             "defaultValue": "{}"
           },
+          "stepId": {
+            "metadata": {
+              "label": "Step Id",
+              "description": "Identity of this step within the workflow, as for `callActivity`"
+            },
+            "types": [
+              {
+                "fieldType": "TEXT",
+                "ballerinaType": "string",
+                "selected": false
+              },
+              {
+                "fieldType": "EXPRESSION",
+                "ballerinaType": "string?",
+                "selected": false
+              }
+            ],
+            "placeholder": "()",
+            "optional": true,
+            "editable": true,
+            "advanced": false,
+            "hidden": false,
+            "codedata": {
+              "kind": "DEFAULTABLE",
+              "originalName": "stepId"
+            },
+            "defaultValue": "()"
+          },
           "checkError": {
             "metadata": {
               "label": "Check Error",
@@ -1068,7 +1482,7 @@
         "metadata": {
           "label": "HTTP",
           "description": "The HTTP client provides functionality to connect to remote HTTP services and perform requests using standard HTTP methods like GET, POST, PUT, DELETE, etc.\n",
-          "icon": "https://bcentral-packageicons.azureedge.net/images/ballerina_http_2.16.6.png"
+          "icon": "https://bcentral-packageicons.azureedge.net/images/ballerina_http_2.17.1.png"
         },
         "codedata": {
           "node": "NEW_CONNECTION",
@@ -1129,16 +1543,16 @@
                 "fieldType": "SINGLE_SELECT",
                 "options": [
                   {
-                    "label": "2.0",
-                    "value": "\"2.0\""
+                    "label": "HTTP_1_0",
+                    "value": "\"1.0\""
                   },
                   {
-                    "label": "1.1",
+                    "label": "HTTP_1_1",
                     "value": "\"1.1\""
                   },
                   {
-                    "label": "1.0",
-                    "value": "\"1.0\""
+                    "label": "HTTP_2_0",
+                    "value": "\"2.0\""
                   }
                 ],
                 "selected": false
@@ -1172,7 +1586,7 @@
                 "typeMembers": [
                   {
                     "type": "ClientHttp1Settings",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
@@ -1209,7 +1623,7 @@
                 "typeMembers": [
                   {
                     "type": "ClientHttp2Settings",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
@@ -1302,7 +1716,7 @@
                 "typeMembers": [
                   {
                     "type": "FollowRedirects",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
@@ -1339,7 +1753,7 @@
                 "typeMembers": [
                   {
                     "type": "PoolConfiguration",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
@@ -1376,7 +1790,7 @@
                 "typeMembers": [
                   {
                     "type": "CacheConfig",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
@@ -1454,49 +1868,49 @@
                 "typeMembers": [
                   {
                     "type": "CredentialsConfig",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
                   },
                   {
                     "type": "BearerTokenConfig",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
                   },
                   {
                     "type": "JwtIssuerConfig",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
                   },
                   {
                     "type": "OAuth2ClientCredentialsGrantConfig",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
                   },
                   {
                     "type": "OAuth2PasswordGrantConfig",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
                   },
                   {
                     "type": "OAuth2RefreshTokenGrantConfig",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
                   },
                   {
                     "type": "OAuth2JwtBearerGrantConfig",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
@@ -1533,7 +1947,7 @@
                 "typeMembers": [
                   {
                     "type": "CircuitBreakerConfig",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
@@ -1570,7 +1984,7 @@
                 "typeMembers": [
                   {
                     "type": "RetryConfig",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
@@ -1607,7 +2021,7 @@
                 "typeMembers": [
                   {
                     "type": "CookieConfig",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
@@ -1644,7 +2058,7 @@
                 "typeMembers": [
                   {
                     "type": "ResponseLimitConfigs",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
@@ -1681,7 +2095,7 @@
                 "typeMembers": [
                   {
                     "type": "ProxyConfig",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
@@ -1746,7 +2160,7 @@
                 "typeMembers": [
                   {
                     "type": "ClientSocketConfig",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
@@ -1811,7 +2225,7 @@
                 "typeMembers": [
                   {
                     "type": "ClientSecureSocket",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
@@ -2067,16 +2481,16 @@
                 "fieldType": "SINGLE_SELECT",
                 "options": [
                   {
-                    "label": "2.0",
-                    "value": "\"2.0\""
+                    "label": "HTTP_1_0",
+                    "value": "\"1.0\""
                   },
                   {
-                    "label": "1.1",
+                    "label": "HTTP_1_1",
                     "value": "\"1.1\""
                   },
                   {
-                    "label": "1.0",
-                    "value": "\"1.0\""
+                    "label": "HTTP_2_0",
+                    "value": "\"2.0\""
                   }
                 ],
                 "selected": false
@@ -2113,7 +2527,7 @@
                 "typeMembers": [
                   {
                     "type": "ClientHttp1Settings",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
@@ -2153,7 +2567,7 @@
                 "typeMembers": [
                   {
                     "type": "ClientHttp2Settings",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
@@ -2249,7 +2663,7 @@
                 "typeMembers": [
                   {
                     "type": "PoolConfiguration",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
@@ -2289,7 +2703,7 @@
                 "typeMembers": [
                   {
                     "type": "CacheConfig",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
@@ -2373,7 +2787,7 @@
                 "typeMembers": [
                   {
                     "type": "CircuitBreakerConfig",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
@@ -2413,7 +2827,7 @@
                 "typeMembers": [
                   {
                     "type": "RetryConfig",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
@@ -2453,7 +2867,7 @@
                 "typeMembers": [
                   {
                     "type": "ResponseLimitConfigs",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
@@ -2493,7 +2907,7 @@
                 "typeMembers": [
                   {
                     "type": "ClientSecureSocket",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false
@@ -2533,7 +2947,7 @@
                 "typeMembers": [
                   {
                     "type": "ProxyConfig",
-                    "packageInfo": "ballerina:http:2.16.6",
+                    "packageInfo": "ballerina:http:2.17.1",
                     "packageName": "http",
                     "kind": "RECORD_TYPE",
                     "selected": false

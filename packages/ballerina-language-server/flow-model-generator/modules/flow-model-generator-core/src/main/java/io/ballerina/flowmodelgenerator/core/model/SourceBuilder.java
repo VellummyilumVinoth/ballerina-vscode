@@ -71,6 +71,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -843,7 +844,10 @@ public class SourceBuilder {
                     missedDefaultValue = true;
                     continue;
                 }
-                if (prop.placeholder().equals(prop.value())) {
+                // A parameter holding what it defaults to is left out of the call. The placeholder is empty when
+                // the default is not known, e.g. a single select whose default names a constant the type does
+                // not carry, and the argument is then written out rather than assumed to be the default.
+                if (Objects.equals(prop.placeholder(), prop.value())) {
                     continue;
                 }
                 if (firstParamAdded) {
