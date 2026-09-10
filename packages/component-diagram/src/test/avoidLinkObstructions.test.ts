@@ -357,6 +357,32 @@ describe("getPortAnchorY", () => {
 
         [165, 213, 267.5, 328.5].forEach((anchor) => expect(anchor).not.toBe(center));
     });
+
+    test("anchors an ai:Service's chat/decision ports by AIServiceWidget's fixed render order, not by resourceFunctions' array order", () => {
+        // AIServiceWidget always renders the chat row above the decision row when both are
+        // present, regardless of which one appears first in `resourceFunctions` - unlike a plain
+        // service, where the generic fallback's row index is exactly the port's array position.
+        // Declare decision before chat here specifically to catch that: if getPortAnchorY ever
+        // regressed to the generic array-order fallback for ai:Service, this would anchor them
+        // swapped (decision -> row 0, chat -> row 1) instead of matching what's actually drawn.
+        const decisionFn = makeResourceFunction("post", "decision");
+        const chatFn = makeResourceFunction("post", "chat");
+        const aiNode = new EntryNodeModel(makeService("ai-1", [decisionFn, chatFn], "ai:Service"), "service");
+        aiNode.height = calculateEntryNodeHeight(2, false);
+        aiNode.setPosition(0, 0); // box top: 0
+
+        expect(getPortAnchorY(aiNode, aiNode.getFunctionPort(chatFn))).toBe(96); // row 0
+        expect(getPortAnchorY(aiNode, aiNode.getFunctionPort(decisionFn))).toBe(144); // row 1
+    });
+
+    test("anchors an ai:Service's decision port at row 0 when chat isn't present", () => {
+        const decisionFn = makeResourceFunction("post", "decision");
+        const aiNode = new EntryNodeModel(makeService("ai-2", [decisionFn], "ai:Service"), "service");
+        aiNode.height = calculateEntryNodeHeight(1, false);
+        aiNode.setPosition(0, 0);
+
+        expect(getPortAnchorY(aiNode, aiNode.getFunctionPort(decisionFn))).toBe(96); // row 0
+    });
 });
 
 describe("avoidLinkObstructions with a real function port (createPortNodeLink)", () => {

@@ -44,6 +44,8 @@ import {
 import { ListenerNodeModel } from "../components/nodes/ListenerNode";
 import { ConnectionNodeModel } from "../components/nodes/ConnectionNode";
 import {
+    AI_CHAT_RESOURCE_NAME,
+    AI_DECISION_RESOURCE_NAME,
     CDConnection,
     CDResourceFunction,
     CDFunction,
@@ -282,6 +284,26 @@ export function getPortAnchorY(node: NodeModel, port: PortModel | null | undefin
     if (service?.type === "graphql:Service") {
         const offset = (port as NodePortModel).rowOffsetY;
         return offset === undefined ? center : box.top + offset;
+    }
+
+    if (service?.type === "ai:Service") {
+        // AIServiceWidget always renders the chat row above the decision row when both are
+        // present (see its JSX), regardless of which one appears first in
+        // `service.resourceFunctions` - unlike the generic fallback below, whose row index is
+        // exactly the port's position in that array. Reusing that fallback here would anchor the
+        // two ports at swapped rows whenever a service happens to declare `decision` before
+        // `chat`.
+        const resourceFunctions = service.resourceFunctions ?? [];
+        const chatFunction = resourceFunctions.find((fn) => fn.path === AI_CHAT_RESOURCE_NAME);
+        const decisionFunction = resourceFunctions.find((fn) => fn.path === AI_DECISION_RESOURCE_NAME);
+        const rowIndex = chatFunction && port === node.getFunctionPort(chatFunction)
+            ? 0
+            : decisionFunction && port === node.getFunctionPort(decisionFunction)
+                ? (chatFunction ? 1 : 0)
+                : -1;
+        return rowIndex === -1
+            ? center
+            : box.top + ENTRY_HEADER_HEIGHT + rowIndex * ENTRY_ROW_HEIGHT + ENTRY_ROW_HEIGHT / 2;
     }
 
     if (port === node.getViewAllResourcesPort()) {
